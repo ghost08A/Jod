@@ -1,6 +1,6 @@
-namespace backend
+namespace Jod.Domain.ViewModels
 {
-    public class WeatherForecast
+    public class WeatherForecastViewModel
     {
         public DateOnly Date { get; set; }
 
