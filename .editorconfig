@@ -1,0 +1,24 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+indent_style = space
+indent_size = 4
+
+# Same as the [*] default above, stated explicitly on purpose: markup and TypeScript are
+# where outside tooling most often assumes 2, so these stay pinned at 4 even if the
+# repo-wide default is ever changed.
+[*.{html,ts,tsx,jsx}]
+indent_style = space
+indent_size = 4
+
+[*.md]
+trim_trailing_whitespace = false
+
+# C# already matches the 4-space base default — only the XML project files differ
+[*.{csproj,props,targets}]
+indent_size = 2

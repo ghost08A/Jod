@@ -98,3 +98,34 @@ out/
 # Rider / JetBrains
 .idea/
 *.DotSettings.user
+
+
+# ==========================================
+# Added by setup-workspace
+# ==========================================
+*.local.*
+*.local
+*.swp
+*~
+.vite/
+coverage/
+*.tsbuildinfo
+.pnpm-store/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+artifacts/
+publish/
+*.rsuser
+*.publishsettings
+PublishProfiles/*.pubxml.user
+*.nupkg
+*.snupkg
+packages/
+!packages.lock.json
+*.pfx
+*.p12
+*.coverage
+coverage*.json
+coverage*.xml

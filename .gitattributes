@@ -1,0 +1,19 @@
+# Git normalises every text file to LF in the repository and writes LF back out on
+# checkout, on every platform. A .gitattributes entry outranks a contributor's
+# core.autocrlf, so the `end_of_line = lf` declared in .editorconfig survives a clone
+# on a machine nobody has configured.
+* text=auto eol=lf
+
+# Windows script hosts need CRLF — cmd.exe can mis-parse an LF-only batch file
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Never transform. `* text=auto` auto-detects most binaries, but a file with few NUL
+# bytes (.snk, .pfx) can be misread as text and corrupted by conversion.
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.snk binary
+*.pfx binary

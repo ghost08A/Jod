@@ -1,0 +1,7 @@
+{
+    // .editorconfig covers file types and rules that .vscode/settings.json does not.
+    // Without this extension VS Code ignores the file entirely.
+    "recommendations": [
+        "editorconfig.editorconfig"
+    ]
+}

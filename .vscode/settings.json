@@ -1,0 +1,28 @@
+{
+    // VS Code has no native .editorconfig support, and editor.detectIndentation
+    // defaults to true — it guesses indentation from a file's existing content and
+    // overrides the configured size. Both are turned off here so the repo's declared
+    // rules are what a contributor actually sees, extension installed or not.
+    // These affect what you type; they never rewrite a line you did not touch.
+    "editor.detectIndentation": false,
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4,
+
+    // Applies to newly created files. Default is "auto", which means CRLF on Windows —
+    // every new file would be born with the endings .gitattributes exists to prevent.
+    // Existing files keep the endings VS Code detects when opening them.
+    "files.eol": "\n",
+
+    // Trailing whitespace is meaningful in Markdown (hard line break). This is a guard
+    // against a contributor's own global settings, not a rule this file imposes.
+    "[markdown]": {
+        "files.trimTrailingWhitespace": false
+    }
+
+    // Deliberately NOT set here: files.trimTrailingWhitespace and
+    // files.insertFinalNewline. Both rewrite the whole document on save, so opening a
+    // legacy file and editing one line would produce a diff across every line that
+    // happened to have trailing whitespace. .editorconfig declares both — that is the
+    // layer CI reads, and the layer that applies when someone deliberately formats a
+    // file. This file only ever configures what you type or create.
+}
