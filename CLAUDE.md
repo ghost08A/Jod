@@ -32,3 +32,13 @@ A task is complete only when
 - Requested functionality is implemented
 - No unnecessary files are added
 - No unrelated code is modified
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (`ghost08A/Jod`), via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
