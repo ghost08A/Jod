@@ -44,6 +44,22 @@ _Avoid_: Description, Topic context
 ชื่อ/ที่อยู่เดิมของ Note ที่ถูก Merge ซึ่งยังชี้ไปที่ Note ปลายทาง เป็นกลไกเบื้องหลัง ผู้ใช้ไม่เห็น ไม่ใช่ Note
 _Avoid_: Redirect note
 
+**Placement Suggestion**:
+คำแนะนำจาก AI ว่า Unplaced note ควรอยู่ใต้ Parent ไหน (ตัวเดียว) ผู้ใช้ยืนยันหรือปฏิเสธเอง AI ไม่ตัดสินแทน
+_Avoid_: Auto-placement
+
+**Trash**:
+ที่เก็บ Note ที่ถูกลบ เปิดดูได้อย่างเดียว กู้คืนได้ ลบถาวรได้เฉพาะผู้ใช้สั่งเอง
+_Avoid_: Recycle bin, Archive
+
+**Merge**:
+การรวม Note A เข้า Note B ที่ผู้ใช้เลือก เนื้อหาและ Child ของ A ไปอยู่ใน B ย้อนกลับไม่ได้ A กลายเป็น Alias ของ B
+_Avoid_: Combine
+
+**Share Link**:
+Link ที่ให้คนอื่นดู Note พร้อมลูกหลานทั้งกิ่งได้อย่างเดียว เลือกได้ว่าใครมี Link ก็ดูได้ หรือจำกัดด้วย email
+_Avoid_: Public page, Invite
+
 ## Retired terms
 
 **Topic**: ไม่ใช่ศัพท์ของระบบ ใช้ "Note ที่มี Child" หรือ "ตำแหน่งใน Tree" แทน

@@ -7,7 +7,7 @@ Assignee: voramatep
 
 Error Logging (§10) ในระดับ requirement: Error ที่ผู้ใช้เห็นต่างจาก Error ที่ระบบเก็บอย่างไร, ข้อมูลอะไรห้ามอยู่ใน log (เนื้อหา Note, Context, email), ผู้ใช้แจ้งปัญหาพร้อมรหัสอ้างอิงได้ไหม
 
-Options (Proposed, unconfirmed):
+Options เดิมก่อนตัดสินใจ (เป็นข้อเสนอ ไม่ใช่ผลลัพธ์ ผลลัพธ์อยู่ใน Resolution):
 - ผู้ใช้เห็นข้อความเข้าใจง่าย + รหัสอ้างอิง ไม่เห็นรายละเอียดภายใน
 - log ไม่เก็บเนื้อหา Note/Context/email (ตาม Security Rules ใน CLAUDE.md)
 

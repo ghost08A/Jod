@@ -9,7 +9,7 @@ Assignee: voramatep
 
 เหตุที่ต้องตัดสินก่อน: `requirement.md` ใช้ "Topic" ใน §6 และพูดถึง "Context ของ Topic" ใน §13 แต่ไม่ได้นิยามคำว่า Topic และ Link (§2) กับ Reference Card (§2, §5) อาจทับซ้อนกัน
 
-Options (Proposed, unconfirmed):
+Options เดิมก่อนตัดสินใจ (เป็นข้อเสนอ ไม่ใช่ผลลัพธ์ ผลลัพธ์อยู่ใน Resolution):
 - ไม่มี Topic เป็นเอนทิตีแยก Topic = Parent Note ที่มี Child
 - Topic เป็นเอนทิตีแยกจาก Note (ขัดกับ §13 ที่บอกว่า Context ไม่ใช่ของ Topic)
 - Link = URL ภายนอก, Reference Card = ชี้ไป Note ภายใน
