@@ -2,6 +2,13 @@
 
 This file provides guidance to AI coding agents (Claude Code, Codex, etc.) when working with code in this repository
 
+## Communication
+
+- Talk to the user in Thai
+- Explain in plain language for a non-programmer: short sentences, everyday words, concrete examples
+- When a technical term is unavoidable, explain it in plain Thai the first time it appears
+- Code, file names, commands and commit messages stay in English
+
 ## Routing — read first, even for trivial edits
 
 Before touching any file under a path below, you MUST Read the matching file
