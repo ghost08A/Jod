@@ -13,36 +13,37 @@ Product Design ที่ Requirements, User Flow, Business Rules และ Core 
   - Jod เป็นแอปแบบเจ้าของคนเดียว (ไม่มีการแก้ไขร่วมกัน)
   - Share = ให้คนอื่น**ดู** Note ได้อย่างเดียว ไม่แก้ไข
   - Scope: ครอบ §1–§16 ให้มากที่สุด หัวข้อที่ยังไม่คมให้เป็น Not yet specified
-- Skills ที่ทุก session ควรเรียก: `grilling`, `domain-modeling` (คำศัพท์ที่ยืนยันแล้วลง `GLOSSARY.md` ที่ราก)
+- Skills ที่ทุก session ควรเรียก: `grilling`, `domain-modeling` (คำศัพท์ที่ยืนยันแล้วลง `CONTEXT.md` ที่ราก)
 - Ticket types: `grilling` / `research` / `prototype` / `task` (ทุก ticket ตอนนี้เป็น `grilling` = HITL)
 
 ## Decisions so far
 
-<!-- ว่าง: ยังไม่มี ticket ที่ปิด -->
+- [Core concepts](tickets/001-core-concepts.md): Topic ตัดทิ้ง; Link=URL นอก, Reference Card=Block ชี้ Note; Unplaced note=Note ไม่มี Parent; นิยามเต็มใน `CONTEXT.md`
+- [Hierarchy & move rules](tickets/003-hierarchy-move-rules.md): ย้ายทั้งกิ่ง, ห้ามย้ายเข้าลูกหลานตัวเอง, ลำดับ Child ผู้ใช้จัดเอง, มี Root note แยกจาก Unplaced note
+- [Capture & unplaced notes](tickets/002-capture-unplaced-notes.md): New note ปุ่มเดียว + Save เลือก AI/Root note/Unplaced; /Note ไม่มี Save; Autosave; Note ว่างลบถาวร
+- [Reference stability & merge](tickets/005-reference-stability-merge.md): การ์ดชี้ตัวตน Note; Merge A เข้า B ผู้ใช้เลือก, ต่อเนื้อหา, Child ตามไป, ใช้ Title/Context ของ B, ย้อนไม่ได้, Alias ต่อทอดได้
+- [Trash rules](tickets/004-trash-rules.md): ลบทั้งกิ่งหรือเฉพาะ Note, กู้ทั้งกิ่ง/กู้ลูกเดี่ยว→Unplaced, ลบถาวรผู้ใช้สั่งเอง, การ์ดแสดง "ถูกลบ", Trash ดูอย่างเดียว
+- [AI placement suggestion lifecycle](tickets/008-ai-placement-lifecycle.md): AI ทำเมื่อผู้ใช้สั่ง, เสนอตัวเดียวจาก Note ที่มีอยู่, ยืนยัน=ย้ายทันที, ปฏิเสธแล้วไม่เสนอซ้ำ, ไม่หมดอายุ
+- [Editor content model](tickets/006-editor-content-model.md): Block คือหน่วยจริง Markdown แค่นำเข้า/ส่งออก; ซ้อนได้ไม่จำกัด; มี Block ไฟล์
+- [Autosave & conflict behavior](tickets/007-autosave-conflict.md): หยุดพิมพ์ ~1 วิ/ออกจากหน้า; แสดงสถานะ; ชนกัน→เลือกฉบับหรือเก็บทั้งสอง
+- [Search scope](tickets/010-search-scope.md): Filter Parent รวมทั้งกิ่ง; ไม่รวม Trash; ไม่ค้น Context
+- [Attachments](tickets/011-attachments.md): ไฟล์เป็น Block ใน Note ตามไปกับ Note
+- [AI data boundary](tickets/012-ai-data-boundary.md): ส่ง Note ที่วิเคราะห์ + Title/Context ของที่วางได้; แจ้งครั้งแรก
+- [Share link rules](tickets/009-share-link-rules.md): แชร์ทั้งกิ่งดูอย่างเดียว; เลือกจำกัด email/ใครก็ได้; เพิกถอน+วันหมดอายุ; Merge แล้ว Link ใช้ไม่ได้
+- [AI Markdown formatting](tickets/013-ai-markdown-formatting.md): AI จัดโครงสร้าง/เรียบเรียง/เพิ่มเนื้อหาได้; ห้ามแตะการ์ด/ไฟล์/Code/Link; ผู้ใช้เทียบแล้วยืนยัน
+- [Email verification & account](tickets/014-email-verification-account.md): ยังไม่ยืนยันห้ามสร้าง Share Link; ผู้รับต้องยืนยัน; เปลี่ยน email ไม่ได้ v1
+- [Error logging](tickets/015-error-logging.md): ผู้ใช้เห็นข้อความ+รหัสอ้างอิง; log ไม่เก็บเนื้อหา/email; AI ล้ม Note ไม่เสีย
+- [Main user flows](tickets/016-main-user-flows.md): [flows.md](flows.md) ยืนยันแล้ว; ของใหม่เข้ากิ่งที่แชร์ถูกแชร์อัตโนมัติ+เตือน
 
 ## Frontier / Tickets
 
-| # | Ticket | Type | Blocked by |
-|---|---|---|---|
-| 001 | [Core concepts](tickets/001-core-concepts.md) | grilling | - |
-| 003 | [Hierarchy & move rules](tickets/003-hierarchy-move-rules.md) | grilling | - |
-| 002 | [Capture & unplaced notes](tickets/002-capture-unplaced-notes.md) | grilling | 001 |
-| 004 | [Trash rules](tickets/004-trash-rules.md) | grilling | 003 |
-| 005 | [Reference stability & merge](tickets/005-reference-stability-merge.md) | grilling | 001, 003 |
-| 006 | [Editor content model](tickets/006-editor-content-model.md) | grilling | 001 |
-| 007 | [Autosave & conflict behavior](tickets/007-autosave-conflict.md) | grilling | 001 |
-| 008 | [AI placement suggestion lifecycle](tickets/008-ai-placement-lifecycle.md) | grilling | 002, 003 |
-| 009 | [Share link (read-only) rules](tickets/009-share-link-rules.md) | grilling | 003, 005 |
+ไม่มี ticket เหลือ: ถึง Destination แล้ว
+
 
 ## Not yet specified
 
-- **Search §6:** "ค้นหาตาม Topic / Hierarchy" หมายถึงอะไร (ขึ้นกับ 001 และ 003)
-- **Note Context §13 และ AI privacy:** Context ถูกส่งออกให้ AI ภายนอกหรือไม่ มีขอบเขตอย่างไร (ขึ้นกับ 008)
-- **AI Markdown Formatting §14:** กฎ "รักษาโครงสร้างเดิม" ที่ตรวจได้ (ขึ้นกับ 006)
-- **Attachments §15:** ความเป็นเจ้าของไฟล์, ชีวิตของไฟล์เมื่อ Note ถูกลบ/Merge (ขึ้นกับ 004, 005)
-- **Email Verification §11:** สถานะ "ยังไม่ยืนยัน" จำกัดอะไรได้บ้าง (ขึ้นกับ Account ที่ยังไม่มี ticket)
-- **Error Logging §10:** ระดับ requirement ว่า Error ที่ผู้ใช้เห็นกับที่ระบบเก็บต่างกันอย่างไร (ไม่ดึงเข้า Architecture)
-- **User Flow รวม:** ร้อยเป็น Flow หลักจากกฎที่ตัดสินแล้ว (จดโน้ต → จัดวาง → ค้นหา → ลบ/กู้ → แชร์)
+<!-- ว่าง: ไม่มีหมอกเหลือ -->
+
 
 ## Out of scope
 

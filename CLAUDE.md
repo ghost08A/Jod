@@ -48,4 +48,4 @@ Issues live in GitHub Issues (`ghost08A/Jod`), via the `gh` CLI. See `docs/agent
 
 ### Domain docs
 
-Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.

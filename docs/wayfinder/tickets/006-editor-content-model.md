@@ -1,7 +1,7 @@
-Status: open
+Status: closed
 Type: grilling
-Blocked by: 001
-Assignee: -
+Blocked by: -
+Assignee: voramatep
 
 ## Question
 
@@ -11,3 +11,12 @@ Options (Proposed, unconfirmed):
 - Block คือหน่วยจริง Markdown เป็นแค่ Import/Export
 - Markdown คือรูปแบบหลัก Block เป็นแค่การแสดงผล
 - `/Note` สร้าง Child และแทรก Card เสมอ
+
+## Resolution
+
+ยืนยันโดยผู้ใช้
+
+- Block คือหน่วยจริงของเนื้อหา Markdown เป็นแค่รูปแบบนำเข้า/ส่งออก
+- List, Checklist, Toggle ซ้อนได้ไม่จำกัดชั้น และใส่ Block ชนิดไหนไว้ข้างในก็ได้
+- เพิ่ม Block ชนิด "ไฟล์" (จาก 011) ต่อจากรายการใน §2
+- Link vs Reference Card ตัดสินใน 001 / `/Note` สร้าง Child พร้อมการ์ดตัดสินใน 001-003

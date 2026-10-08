@@ -1,7 +1,7 @@
-Status: open
+Status: closed
 Type: grilling
-Blocked by: 001, 003
-Assignee: -
+Blocked by: -
+Assignee: voramatep
 
 ## Question
 
@@ -11,3 +11,16 @@ Options (Proposed, unconfirmed):
 - Note มีตัวตนคงที่ Reference ชี้ที่ตัวตนนั้น ไม่ใช่ที่ตำแหน่งใน Tree
 - Merge = ต่อเนื้อหาของ A ท้าย B, Child ของ A ย้ายไป B, A กลายเป็น Alias ของ B
 - Merge ย้อนกลับไม่ได้ในเวอร์ชันแรก หรือย้อนกลับได้ผ่านช่วงเวลาจำกัด
+
+## Resolution
+
+ยืนยันโดยผู้ใช้
+
+- Reference Card ชี้ที่ตัวตนของ Note ไม่ใช่ตำแหน่งใน Tree ย้าย Note แล้วการ์ดไม่เสีย
+- Merge A เข้า B: ผู้ใช้เลือกเองว่าปลายทางคือ B A หายเข้าไปอยู่ใน B
+- เนื้อหาของ A ต่อท้ายเนื้อหาของ B
+- Child ของ A ย้ายไปเป็นลูกของ B (ต่อท้ายลูกเดิมของ B)
+- ใช้ Title และ Context ของ B ของ A หายไป (ไม่รวม Context) Title เดิมของ A ยังเก็บเป็น Alias ชี้ไป B
+- Merge ย้อนกลับไม่ได้ในเวอร์ชันแรก ระบบเตือนก่อนยืนยัน
+- Alias ต่อเป็นทอดได้ (A→B→C) การ์ดเก่าไปถึง Note ปลายทางสุดท้ายเสมอ
+- ถ้า Note ปลายทางอยู่ใน Trash การ์ดเก่าเปิดไปเจอหน้า "Note นี้อยู่ใน Trash" พร้อมปุ่มกู้คืน
