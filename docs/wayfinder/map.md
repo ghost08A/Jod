@@ -39,7 +39,11 @@ Product Design ที่ Requirements, User Flow, Business Rules และ Core 
 
 ## Frontier / Tickets
 
-ไม่มี ticket เหลือ: ถึง Destination แล้ว
+| # | Ticket | Type | Blocked by |
+|---|---|---|---|
+| 017 | [Prototype: capture & home](tickets/017-prototype-capture-home.md) | prototype | - |
+
+Ticket 001-016 ปิดหมดแล้ว (ถึง Destination ของ Product Design) 017 เป็นงานเสริมด้าน UX
 
 
 ## Not yet specified
