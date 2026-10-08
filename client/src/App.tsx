@@ -1,9 +1,10 @@
-import { WeatherPage } from './modules/weather/components/WeatherPage'
+import { PrototypeCaptureHome } from './modules/prototype-capture-home/components/PrototypeCaptureHome'
 
+// Note: PROTOTYPE branch only (ticket 017) - mounts the throwaway home prototype instead of the weather sample
 export function App() {
     return (
         <main>
-            <WeatherPage />
+            <PrototypeCaptureHome />
         </main>
     )
 }
