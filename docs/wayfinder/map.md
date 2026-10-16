@@ -35,18 +35,14 @@ Product Design ที่ Requirements, User Flow, Business Rules และ Core 
 - [Error logging](tickets/015-error-logging.md): ผู้ใช้เห็นข้อความ+รหัสอ้างอิง; log ไม่เก็บเนื้อหา/email; AI ล้ม Note ไม่เสีย
 - [Main user flows](tickets/016-main-user-flows.md): [flows.md](flows.md) ยืนยันแล้ว; ของใหม่เข้ากิ่งที่แชร์ถูกแชร์อัตโนมัติ+เตือน
 - [Prototype: capture & home](tickets/017-prototype-capture-home.md): เลือก layout C (canvas โล่ง ธีมมืด แถบข้างซ่อนได้ ปุ่ม "จัดวาง" เล็กๆ มุมขวาบน); prototype อยู่ branch `prototype/capture-home`
+- [Prototype: AI review & conflict](tickets/018-prototype-ai-review-conflict.md): AI จัดโครงสร้างใช้ Side-by-side เลือกรับรายรายการ + Preview ก่อนยืนยัน; บันทึกชนกันยังไม่เลือกแบบ; prototype อยู่ branch `prototype/ai-review`
 
 สรุปรวมทุกการตัดสินใจ: [docs/product-spec.md](../product-spec.md)
 
 ## Frontier / Tickets
 
-| # | Ticket | Type | Blocked by |
-|---|---|---|---|
-| 017 | [Prototype: capture & home](tickets/017-prototype-capture-home.md) | prototype | - (ปิดแล้ว: เลือก Layout C) |
-| 018 | [Prototype: AI review & conflict](tickets/018-prototype-ai-review-conflict.md) | prototype | - (เปิดอยู่: รอทดลอง A/B/C) |
 
-
-Ticket 001-017 ปิดแล้ว (ถึง Destination ของ Product Design; 017 เป็นงานเสริมด้าน UX) 018 เป็นงานเสริมด้าน UX ที่ยังเปิดอยู่ รอทดลอง prototype
+Ticket 001-018 ปิดหมดแล้ว (ถึง Destination ของ Product Design; 017 และ 018 เป็นงานเสริมด้าน UX)
 
 
 ## Not yet specified
