@@ -30,7 +30,7 @@ Product Design ที่ Requirements, User Flow, Business Rules และ Core 
 - [Attachments](tickets/011-attachments.md): ไฟล์เป็น Block ใน Note ตามไปกับ Note
 - [AI data boundary](tickets/012-ai-data-boundary.md): ส่ง Note ที่วิเคราะห์ + Title/Context ของที่วางได้; แจ้งครั้งแรก
 - [Share link rules](tickets/009-share-link-rules.md): แชร์ทั้งกิ่งดูอย่างเดียว; การ์ดในกิ่งที่แชร์เปิด Note ปลายทางพร้อมลูกหลานได้; เลือกจำกัด email/ใครก็ได้; เพิกถอน+วันหมดอายุ; Merge แล้ว Link ใช้ไม่ได้
-- [AI Markdown formatting](tickets/013-ai-markdown-formatting.md): AI จัดโครงสร้าง/เรียบเรียง/เพิ่มเนื้อหาได้; ห้ามแตะการ์ด/ไฟล์/Code/Link; ผู้ใช้เทียบแล้วยืนยัน
+- [AI Markdown formatting](tickets/013-ai-markdown-formatting.md): AI จัดโครงสร้าง/เรียบเรียง/เพิ่มเนื้อหาได้; ห้ามแตะการ์ด/ไฟล์/Code/Link; เลือกรับรายรายการ + Preview ก่อนยืนยัน; ห้ามแตะถูกแก้=ทิ้งทั้งชุด
 - [Email verification & account](tickets/014-email-verification-account.md): ยังไม่ยืนยันห้ามสร้าง Share Link; ผู้รับต้องยืนยัน; เปลี่ยน email ไม่ได้ v1
 - [Error logging](tickets/015-error-logging.md): ผู้ใช้เห็นข้อความ+รหัสอ้างอิง; log ไม่เก็บเนื้อหา/email; AI ล้ม Note ไม่เสีย
 - [Main user flows](tickets/016-main-user-flows.md): [flows.md](flows.md) ยืนยันแล้ว; ของใหม่เข้ากิ่งที่แชร์ถูกแชร์อัตโนมัติ+เตือน
