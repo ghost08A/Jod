@@ -20,7 +20,7 @@ Assignee: voramatep
 
 ## Follow-up questions (ยังไม่ใช่เหตุผลให้เปิด Ticket กลับ)
 
-- ข้อความเริ่มต้นของ Title (prototype ใช้ "Untitled")
-- ความสว่าง/contrast ของข้อความเนื้อหาใน Dark Theme
-- พฤติกรรมและหน้าตาเมนู `/` จริง
+- ข้อความเริ่มต้นของ Title: ตัดสินแล้ว = "Untitled" (ticket 019)
+- ความสว่าง/contrast ของข้อความเนื้อหาใน Dark Theme: ตัดสินแล้ว = ไม่ลดความสว่าง (ticket 019)
+- เมนู `/`: รายการคำสั่งตัดสินแล้ว (ticket 020) หน้าตาและพฤติกรรมจริงรอ prototype (ticket 021)
 - Save 3 ทาง, Note ว่าง/Title และ Unplaced จำนวนมาก ยังต้องทดสอบพฤติกรรมตาม checklist ก่อนสรุปว่า UX ของ Capture & Save ผ่านครบ
