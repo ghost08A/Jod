@@ -1,6 +1,6 @@
 import type { PrototypeNote } from '../types/prototype-note'
 
-export const DEFAULT_TITLE = 'ไม่มีชื่อ'
+export const DEFAULT_TITLE = 'Untitled'
 
 const base = { rejectedParentIds: [], isDraft: false }
 

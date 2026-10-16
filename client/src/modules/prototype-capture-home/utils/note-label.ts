@@ -15,6 +15,16 @@ export function parentLabel(notes: PrototypeNote[], parentId: string | undefined
     return parent ? displayTitle(parent) : '—'
 }
 
+export function notePath(notes: PrototypeNote[], note: PrototypeNote): string {
+    const titles: string[] = []
+    let current: PrototypeNote | undefined = note
+    while (current) {
+        titles.unshift(displayTitle(current))
+        current = current.placement === 'child' ? notes.find((item) => item.id === current?.parentId) : undefined
+    }
+    return titles.join(' / ')
+}
+
 export function isEmptyDraft(note: PrototypeNote): boolean {
     return note.isDraft && note.title === '' && note.body.trim() === ''
 }
