@@ -40,8 +40,13 @@ Product Design ที่ Requirements, User Flow, Business Rules และ Core 
 
 ## Frontier / Tickets
 
+| # | Ticket | Type | Blocked by |
+|---|---|---|---|
+| 017 | [Prototype: capture & home](tickets/017-prototype-capture-home.md) | prototype | - (ปิดแล้ว: เลือก Layout C) |
+| 018 | [Prototype: AI review & conflict](tickets/018-prototype-ai-review-conflict.md) | prototype | - (เปิดอยู่: รอทดลอง A/B/C) |
 
-Ticket 001-017 ปิดหมดแล้ว (ถึง Destination ของ Product Design; 017 เป็นงานเสริมด้าน UX)
+
+Ticket 001-017 ปิดแล้ว (ถึง Destination ของ Product Design; 017 เป็นงานเสริมด้าน UX) 018 เป็นงานเสริมด้าน UX ที่ยังเปิดอยู่ รอทดลอง prototype
 
 
 ## Not yet specified
