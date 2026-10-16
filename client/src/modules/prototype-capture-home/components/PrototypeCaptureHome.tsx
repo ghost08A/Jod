@@ -21,6 +21,7 @@ function readVariant(): string {
 
 export function PrototypeCaptureHome() {
     const [variant, setVariant] = useState(readVariant)
+    const [dark, setDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches)
     const api = usePrototypeNotes()
     const { notice, dismissNotice } = api
 
@@ -38,11 +39,12 @@ export function PrototypeCaptureHome() {
     }, [notice, dismissNotice])
 
     return (
-        <div className="pc-root">
+        <div className={`pc-root ${dark ? 'is-dark' : ''}`}>
             {variant === 'A' && <VariantA api={api} />}
             {variant === 'B' && <VariantB api={api} />}
             {variant === 'C' && <VariantC api={api} />}
             {notice && <div className="pc-toast" role="status">{notice}</div>}
+            <button type="button" className="pc-theme" onClick={() => setDark(!dark)} aria-label="สลับธีมมืด/สว่าง">{dark ? '☀' : '☾'}</button>
             <PrototypeSwitcher variants={VARIANTS} current={variant} onChange={changeVariant} />
         </div>
     )

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { PrototypeNotesApi } from '../hooks/usePrototypeNotes'
 import { bodyPreview, displayTitle, isEmptyDraft } from '../utils/note-label'
 import { MovePicker } from './MovePicker'
@@ -9,9 +9,18 @@ import { TreeList } from './TreeList'
 // Note: Variant A = sidebar (Tree + "รอจัดวาง" always visible) + Save bar docked at the bottom of the editor
 export function VariantA({ api }: { api: PrototypeNotesApi }) {
     const [openId, setOpenId] = useState<string | undefined>()
+    const [sidebarOpen, setSidebarOpen] = useState(true)
     const { notes } = api
     const open = notes.find((note) => note.id === openId)
     const unplaced = notes.filter((note) => note.placement === 'unplaced' && !isEmptyDraft(note))
+
+    useEffect(() => {
+        function handleKey(event: KeyboardEvent) {
+            if ((event.ctrlKey || event.metaKey) && event.key === '\\') setSidebarOpen((current) => !current)
+        }
+        window.addEventListener('keydown', handleKey)
+        return () => window.removeEventListener('keydown', handleKey)
+    }, [])
 
     function closeCurrent() {
         if (open?.isDraft) api.closeDraft(open.id)
@@ -35,7 +44,14 @@ export function VariantA({ api }: { api: PrototypeNotesApi }) {
     }
 
     return (
-        <div className="pc-a">
+        <div className={`pc-a ${sidebarOpen ? '' : 'is-collapsed'}`}>
+            <button
+                type="button"
+                className="pc-a-toggle"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                aria-label={sidebarOpen ? 'ซ่อนแถบด้านข้าง' : 'แสดงแถบด้านข้าง'}
+                title="ซ่อน/แสดงแถบข้าง (Ctrl+\)"
+            >☰</button>
             <aside className="pc-a-side">
                 <button type="button" className="pc-primary pc-a-new" onClick={newNote}>+ New note</button>
                 <h2 className="pc-heading">Tree</h2>
@@ -67,7 +83,7 @@ export function VariantA({ api }: { api: PrototypeNotesApi }) {
                     <>
                         <NoteEditorFields note={open} onChange={(changes) => api.patch(open.id, changes)} autoFocus />
                         {open.isDraft ? (
-                            <div className="pc-a-savebar">
+                            <div className={`pc-a-savebar ${open.title || open.body.trim() ? '' : 'is-hidden'}`}>
                                 <span>จัดวางที่ไหนดี?</span>
                                 <button type="button" className="pc-primary" onClick={() => save('ai')}>✨ ให้ AI จัดให้</button>
                                 <button type="button" className="pc-secondary" onClick={() => save('root')}>เป็นแม่ใหม่ (Root)</button>
