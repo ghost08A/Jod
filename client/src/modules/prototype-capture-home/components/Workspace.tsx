@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import type { PrototypeNotesApi } from '../hooks/usePrototypeNotes'
-import { NoteCanvas } from './NoteCanvas'
+import { NoteCanvas, type SlashConfig } from './NoteCanvas'
 import { Sidebar } from './Sidebar'
 
 export interface LayoutConfig {
@@ -14,11 +14,12 @@ export interface LayoutConfig {
 interface WorkspaceProps {
     api: PrototypeNotesApi
     layout: LayoutConfig
+    slash: SlashConfig
 }
 
-export function Workspace({ api, layout }: WorkspaceProps) {
-    const [openId, setOpenId] = useState<string | undefined>()
-    const [sidebarOpen, setSidebarOpen] = useState(true)
+export function Workspace({ api, layout, slash }: WorkspaceProps) {
+    const [openId, setOpenId] = useState<string | undefined>('meeting')
+    const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth > 720)
     const open = api.notes.find((note) => note.id === openId)
 
     useEffect(() => {
@@ -58,7 +59,7 @@ export function Workspace({ api, layout }: WorkspaceProps) {
             </aside>
             <main className="pc-main">
                 {open ? (
-                    <NoteCanvas key={open.id} note={open} api={api} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+                    <NoteCanvas key={open.id} note={open} api={api} slash={slash} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
                 ) : (
                     <button type="button" className="pc-quiet pc-toggle pc-toggle-floating" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>
                 )}
