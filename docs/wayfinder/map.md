@@ -37,18 +37,16 @@ Product Design ที่ Requirements, User Flow, Business Rules และ Core 
 - [Prototype: capture & home](tickets/017-prototype-capture-home.md): เลือก layout C (canvas โล่ง ธีมมืด แถบข้างซ่อนได้ ปุ่ม "จัดวาง" เล็กๆ มุมขวาบน); prototype อยู่ branch `prototype/capture-home`
 - [Platform & UX leftovers](tickets/019-platform-and-ux-leftovers.md): ใช้บนมือถือและคอม; ธีมมืดอย่างเดียว; Title เริ่มต้น "Untitled"; หน้าบันทึกชนกันใช้ Side-by-side; ไม่ลดความสว่างข้อความ
 - [Slash commands](tickets/020-slash-commands.md): 3 หมวด (ข้อความ / Note-ลิงก์ / เนื้อหาพิเศษ) แยก /note กับ /reference; เพิ่ม Block รูปภาพและ Callout
+- [Prototype: slash menu](tickets/021-prototype-slash-menu.md): เลือก Variant A (รายการลอย แบ่งหมวด) /note สร้างทันที ไม่เปลี่ยนกฎ 002; prototype อยู่ branch `prototype/slash-menu`
 - [Prototype: AI review & conflict](tickets/018-prototype-ai-review-conflict.md): AI จัดโครงสร้างใช้ Side-by-side เลือกรับรายรายการ + Preview ก่อนยืนยัน; บันทึกชนกันเลือก Side-by-side (019); prototype อยู่ branch `prototype/ai-review`
 
 สรุปรวมทุกการตัดสินใจ: [docs/product-spec.md](../product-spec.md)
 
 ## Frontier / Tickets
 
-| # | Ticket | Type | Blocked by |
-|---|---|---|---|
-| 021 | [Prototype: slash menu](tickets/021-prototype-slash-menu.md) | prototype | - |
 
 
-Ticket 001-020 ปิดแล้ว (ถึง Destination ของ Product Design; 017-021 เป็นงานเสริมด้าน UX) เหลือ 021 รอทำ prototype
+Ticket 001-021 ปิดหมดแล้ว (ถึง Destination ของ Product Design; 017-021 เป็นงานเสริมด้าน UX)
 
 
 ## Not yet specified
