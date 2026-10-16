@@ -23,3 +23,31 @@ export type ScenarioKind = 'format' | 'formatFail' | 'conflict'
 export type ReviewChoice = 'apply' | 'discard' | 'retry' | 'thisTab' | 'otherTab' | 'both'
 
 export const PROTECTED_KINDS: ReviewBlockKind[] = ['code', 'reference', 'file', 'link']
+
+// ticket 018 (block-by-block review)
+export type ChangeType = 'edit' | 'add' | 'remove' | 'split' | 'merge' | 'move'
+
+export interface ChangeGroup {
+    id: string
+    type: ChangeType
+    left: ReviewBlock[]
+    right: ReviewBlock[]
+    relation?: string
+    movesToEnd?: boolean
+    blockedReason?: string
+}
+
+export type ReviewItem =
+    | { kind: 'context', id: string, block: ReviewBlock }
+    | { kind: 'change', group: ChangeGroup }
+
+export type Pick = 'original' | 'ai'
+export type Selection = Record<string, Pick>
+
+export interface PreviewRow {
+    id: string
+    block?: ReviewBlock
+    ghost?: string
+    groupId?: string
+    fromAi: boolean
+}

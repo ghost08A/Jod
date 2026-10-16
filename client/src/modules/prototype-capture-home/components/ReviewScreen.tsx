@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CONFLICT_ROWS, FORMAT_ROWS } from '../constants/review-samples'
 import type { ReviewChoice, ScenarioKind } from '../types/review-block'
+import { BlockReviewScreen } from './BlockReviewScreen'
 import { ReviewInline } from './ReviewInline'
 import { ReviewPeek } from './ReviewPeek'
 import { ReviewSideBySide } from './ReviewSideBySide'
@@ -30,6 +31,10 @@ export function ReviewScreen({ scenario, variant, noteTitle, onResolve, onToggle
     const leftLabel = isConflict ? 'ฉบับนี้ (แท็บนี้)' : 'ฉบับเดิม'
     const rightLabel = isConflict ? 'ฉบับอีกแท็บ' : 'ฉบับที่ AI จัด'
     const headline = isConflict ? 'Note นี้ถูกแก้จากอีกแท็บ' : 'AI เสนอฉบับใหม่'
+
+    if (scenario === 'format' && variant === 'A') {
+        return <BlockReviewScreen noteTitle={noteTitle} onResolve={onResolve} onToggleSidebar={onToggleSidebar} />
+    }
 
     return (
         <div className="pc-canvas">
