@@ -79,11 +79,18 @@ export function usePrototypeNotes() {
             : { placement: 'root', parentId: undefined, suggestion: undefined })
     }, [patch])
 
+    const addNote = useCallback((title: string, body: string) => {
+        nextId += 1
+        setNotes((current) => [...current, {
+            id: `n${nextId}`, title, body, placement: 'unplaced', rejectedParentIds: [], isDraft: false,
+        }])
+    }, [])
+
     const dismissNotice = useCallback(() => setNotice(undefined), [])
 
     return {
         notes, notice, dismissNotice, startDraft, patch, saveDraft, closeDraft,
-        askAi, confirmSuggestion, rejectSuggestion, moveTo,
+        askAi, confirmSuggestion, rejectSuggestion, moveTo, addNote,
     }
 }
 

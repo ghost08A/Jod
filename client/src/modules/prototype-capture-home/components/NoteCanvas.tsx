@@ -9,10 +9,11 @@ interface NoteCanvasProps {
     note: PrototypeNote
     api: PrototypeNotesApi
     onToggleSidebar: () => void
+    onFormat: () => void
 }
 
 // Note: one open surface - title and body live on the same canvas, no boxes, no footer
-export function NoteCanvas({ note, api, onToggleSidebar }: NoteCanvasProps) {
+export function NoteCanvas({ note, api, onToggleSidebar, onFormat }: NoteCanvasProps) {
     const bodyRef = useRef<HTMLTextAreaElement>(null)
     const titleRef = useRef<HTMLInputElement>(null)
 
@@ -40,6 +41,7 @@ export function NoteCanvas({ note, api, onToggleSidebar }: NoteCanvasProps) {
             <header className="pc-topbar">
                 <button type="button" className="pc-quiet pc-toggle" onClick={onToggleSidebar} aria-label="ซ่อน/แสดงแถบข้าง (Ctrl+\)">☰</button>
                 <span className="pc-path">{notePath(api.notes, note)}</span>
+                <button type="button" className="pc-quiet" onClick={onFormat}>✦ จัดโครงสร้าง</button>
                 <PlacementMenu note={note} api={api} />
             </header>
             <div

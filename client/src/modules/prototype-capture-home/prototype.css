@@ -350,3 +350,235 @@
 .pc-root .pc-body:focus-visible {
     outline: none;
 }
+
+/* ticket 018: review screens (AI proposal / save conflict) */
+.pc-scenarios {
+    position: fixed;
+    bottom: 14px;
+    left: 12px;
+    z-index: 20;
+    display: flex;
+    gap: 4px;
+    background: #000;
+    border-radius: 18px;
+    padding: 4px 6px;
+    font-size: 12px;
+}
+
+.pc-scenarios button {
+    color: #fff;
+    padding: 4px 8px !important;
+    border-radius: 12px;
+}
+
+.pc-scenarios button:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.pc-rv-primary {
+    color: var(--pc-accent) !important;
+    font-weight: 600;
+}
+
+.pc-rv-note {
+    margin: 0;
+    padding: 0 24px 8px 56px;
+    font-size: 13px;
+    color: var(--pc-faint);
+}
+
+.pc-rv-fail {
+    padding: 120px 24px 0 96px;
+    max-width: 600px;
+}
+
+.pc-rv-sub {
+    color: var(--pc-muted);
+}
+
+.pc-rv-seg {
+    display: flex;
+    gap: 2px;
+    background: var(--pc-hover);
+    border-radius: 6px;
+    padding: 2px;
+}
+
+.pc-rv-seg button {
+    padding: 3px 10px !important;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--pc-muted);
+}
+
+.pc-rv-seg button.is-on {
+    background: var(--pc-selected);
+    color: var(--pc-ink);
+}
+
+/* blocks */
+.pc-rv-block {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    padding: 3px 0;
+    font-size: 16px;
+    line-height: 1.7;
+}
+
+.pc-rv-block.is-heading {
+    font-size: 22px;
+    font-weight: 700;
+    padding-top: 12px;
+}
+
+.pc-rv-block.is-code .pc-rv-text {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 14px;
+    background: var(--pc-hover);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.pc-rv-block.is-link .pc-rv-text {
+    color: var(--pc-accent);
+    text-decoration: underline;
+}
+
+.pc-rv-block.is-reference .pc-rv-text,
+.pc-rv-block.is-file .pc-rv-text {
+    background: var(--pc-hover);
+    padding: 0 8px;
+    border-radius: 4px;
+}
+
+.pc-rv-mark {
+    color: var(--pc-muted);
+}
+
+.pc-rv-lock {
+    margin-left: auto;
+    font-size: 12px;
+    opacity: 0.5;
+}
+
+.pc-rv-add {
+    background: rgba(46, 160, 67, 0.28);
+    border-radius: 3px;
+}
+
+.pc-rv-del {
+    background: rgba(248, 81, 73, 0.28);
+    text-decoration: line-through;
+    border-radius: 3px;
+}
+
+/* A: side-by-side */
+.pc-rv-sbs {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 40px;
+    padding: 8px 40px 120px 56px;
+}
+
+.pc-rv-colhead {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--pc-faint);
+    padding-bottom: 8px;
+}
+
+.pc-rv-sbs-row {
+    display: contents;
+}
+
+.pc-rv-cell {
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.pc-rv-cell.is-added {
+    background: rgba(46, 160, 67, 0.12);
+}
+
+.pc-rv-cell.is-removed {
+    background: rgba(248, 81, 73, 0.12);
+}
+
+/* B: inline */
+.pc-rv-inline {
+    max-width: 720px;
+    margin: 0 0 0 170px;
+    padding: 8px 24px 120px 0;
+}
+
+.pc-rv-inline-row {
+    position: relative;
+    border-radius: 4px;
+}
+
+.pc-rv-inline-row.is-added {
+    background: rgba(46, 160, 67, 0.12);
+}
+
+.pc-rv-inline-row.is-removed {
+    background: rgba(248, 81, 73, 0.12);
+}
+
+.pc-rv-inline-row.is-edited {
+    background: rgba(210, 153, 34, 0.1);
+}
+
+.pc-rv-margin {
+    position: absolute;
+    right: 100%;
+    margin-right: 14px;
+    top: 6px;
+    width: 140px;
+    text-align: right;
+    font-size: 11px;
+    color: var(--pc-faint);
+}
+
+.is-struck {
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+/* C: peek */
+.pc-rv-peek {
+    max-width: 600px;
+    margin: 0 0 0 96px;
+    padding: 8px 24px 120px 0;
+}
+
+.pc-rv-peek-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.pc-rv-peek-row .pc-rv-block {
+    flex: 1;
+}
+
+.pc-rv-dot {
+    width: 6px;
+    height: 6px;
+    margin-top: 16px;
+    margin-left: -18px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.pc-rv-dot.is-added {
+    background: #2ea043;
+}
+
+.pc-rv-dot.is-edited {
+    background: #d29922;
+}
+
+.pc-rv-dot.is-removed {
+    background: #f85149;
+}
