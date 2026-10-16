@@ -34,16 +34,14 @@ Product Design ที่ Requirements, User Flow, Business Rules และ Core 
 - [Email verification & account](tickets/014-email-verification-account.md): ยังไม่ยืนยันห้ามสร้าง Share Link; ผู้รับต้องยืนยัน; เปลี่ยน email ไม่ได้ v1
 - [Error logging](tickets/015-error-logging.md): ผู้ใช้เห็นข้อความ+รหัสอ้างอิง; log ไม่เก็บเนื้อหา/email; AI ล้ม Note ไม่เสีย
 - [Main user flows](tickets/016-main-user-flows.md): [flows.md](flows.md) ยืนยันแล้ว; ของใหม่เข้ากิ่งที่แชร์ถูกแชร์อัตโนมัติ+เตือน
+- [Prototype: capture & home](tickets/017-prototype-capture-home.md): เลือก layout C (canvas โล่ง ธีมมืด แถบข้างซ่อนได้ ปุ่ม "จัดวาง" เล็กๆ มุมขวาบน); prototype อยู่ branch `prototype/capture-home`
 
 สรุปรวมทุกการตัดสินใจ: [docs/product-spec.md](../product-spec.md)
 
 ## Frontier / Tickets
 
-| # | Ticket | Type | Blocked by |
-|---|---|---|---|
-| 017 | [Prototype: capture & home](tickets/017-prototype-capture-home.md) | prototype | - |
 
-Ticket 001-016 ปิดหมดแล้ว (ถึง Destination ของ Product Design) 017 เป็นงานเสริมด้าน UX
+Ticket 001-017 ปิดหมดแล้ว (ถึง Destination ของ Product Design; 017 เป็นงานเสริมด้าน UX)
 
 
 ## Not yet specified
