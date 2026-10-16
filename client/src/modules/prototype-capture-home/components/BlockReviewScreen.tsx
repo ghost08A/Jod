@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { REVIEW_ITEMS } from '../constants/review-groups'
 import type { Pick, ReviewChoice, Selection } from '../types/review-block'
 import { PROTECTED_KINDS } from '../types/review-block'
-import { buildPreview, bulkSelection, changeGroups, summarize } from '../utils/review-selection'
+import { buildPreview, bulkSelection, summarize } from '../utils/review-selection'
 import { ReviewBlockView } from './ReviewBlockView'
 import { ReviewGroupRow } from './ReviewGroupRow'
 import { ReviewPreview } from './ReviewPreview'
@@ -19,7 +19,6 @@ export function BlockReviewScreen({ noteTitle, onResolve, onToggleSidebar }: Blo
     const [view, setView] = useState<'compare' | 'preview'>('compare')
     const summary = summarize(REVIEW_ITEMS, selection)
     const preview = useMemo(() => buildPreview(REVIEW_ITEMS, selection), [selection])
-    const blockedIds = changeGroups(REVIEW_ITEMS).filter((group) => group.blockedReason).map((group) => group.id)
 
     function pick(groupId: string, value: Pick) {
         setSelection((current) => ({ ...current, [groupId]: value }))
@@ -57,9 +56,8 @@ export function BlockReviewScreen({ noteTitle, onResolve, onToggleSidebar }: Blo
                 </div>
             </div>
             <p className="pc-rv-note">
-                ฉบับเดิมยังไม่ถูกแก้จนกว่าจะกดยืนยัน · Block ที่ห้ามแตะ {summary.protectedUnchanged + summary.blocked} อัน:
-                ไม่เปลี่ยน {summary.protectedUnchanged}
-                {summary.blocked > 0 && <strong className="pc-br-warn"> · ⛔ AI พยายามเปลี่ยน {summary.blocked} (ถูกบล็อก ใช้ได้แต่ฉบับเดิม)</strong>}
+                ✓ ผ่านการตรวจแล้ว: Block ที่ห้ามแตะครบ {summary.protectedUnchanged} จาก {summary.protectedUnchanged} และไม่ถูกแก้
+                · ฉบับเดิมยังไม่ถูกแก้จนกว่าจะกดยืนยัน
             </p>
             {view === 'compare' ? (
                 <div className="pc-br-body">
@@ -80,7 +78,7 @@ export function BlockReviewScreen({ noteTitle, onResolve, onToggleSidebar }: Blo
                     ))}
                 </div>
             ) : (
-                <ReviewPreview rows={preview} selection={selection} blockedIds={blockedIds} onFlip={flip} />
+                <ReviewPreview rows={preview} selection={selection} onFlip={flip} />
             )}
         </div>
     )

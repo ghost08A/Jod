@@ -4,12 +4,11 @@ import { ReviewBlockView } from './ReviewBlockView'
 interface ReviewPreviewProps {
     rows: PreviewRow[]
     selection: Selection
-    blockedIds: string[]
     onFlip: (groupId: string) => void
 }
 
 // Note: shows the note as it will really be after Confirm; every changed block can still be flipped back here
-export function ReviewPreview({ rows, selection, blockedIds, onFlip }: ReviewPreviewProps) {
+export function ReviewPreview({ rows, selection, onFlip }: ReviewPreviewProps) {
     return (
         <div className="pc-pv">
             <p className="pc-rv-note">นี่คือ Note ที่จะได้ถ้ากดยืนยันตอนนี้ ฉบับเดิมยังไม่ถูกแก้</p>
@@ -25,7 +24,6 @@ export function ReviewPreview({ rows, selection, blockedIds, onFlip }: ReviewPre
                             <button
                                 type="button"
                                 className="pc-pv-flip"
-                                disabled={blockedIds.includes(groupId)}
                                 onClick={() => onFlip(groupId)}
                             >
                                 {row.fromAi ? '✦ AI · ' : 'เดิม · '}{flipLabel}

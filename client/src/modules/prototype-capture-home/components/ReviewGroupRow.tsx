@@ -1,4 +1,4 @@
-import { PROTECTED_KINDS, type ChangeGroup, type Pick, type ReviewBlock } from '../types/review-block'
+import type { ChangeGroup, Pick, ReviewBlock } from '../types/review-block'
 import { GroupControlBar } from './GroupControlBar'
 import { ReviewBlockView } from './ReviewBlockView'
 
@@ -25,12 +25,9 @@ function Cell({ blocks, empty, picked, side, diffAgainst }: {
 
 export function ReviewGroupRow({ group, picked, onPick }: ReviewGroupRowProps) {
     const single = group.type === 'edit' && group.left.length === 1 && group.right.length === 1
-    const touchesProtected = [...group.left, ...group.right].some((block) => PROTECTED_KINDS.includes(block.kind))
     return (
-        <section className={`pc-gr is-${group.type} ${group.blockedReason ? 'is-blocked' : ''}`}>
+        <section className={`pc-gr is-${group.type}`}>
             <GroupControlBar group={group} picked={picked} onPick={onPick} />
-            {group.blockedReason && <p className="pc-gr-error">⛔ ระบบไม่อนุญาต: {group.blockedReason}</p>}
-            {touchesProtected && !group.blockedReason && <p className="pc-gr-hint">🔒 Block ประเภทนี้เปลี่ยนแปลงไป</p>}
             <div className="pc-gr-cols">
                 <Cell
                     blocks={group.left}

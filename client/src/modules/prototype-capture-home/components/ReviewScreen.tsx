@@ -60,8 +60,9 @@ export function ReviewScreen({ scenario, variant, noteTitle, onResolve, onToggle
             </header>
             {scenario === 'formatFail' ? (
                 <div className="pc-rv-fail">
-                    <p>ผลลัพธ์ของ AI ไม่ผ่านการตรวจ (Link ถูกแก้) ระบบทิ้งผลลัพธ์แล้ว</p>
-                    <p className="pc-rv-sub">ฉบับเดิมของคุณยังอยู่ครบ ไม่มีอะไรเปลี่ยน</p>
+                    <p>ผลลัพธ์ของ AI ไม่ผ่านการตรวจ ระบบทิ้งผลลัพธ์ทั้งชุดแล้ว</p>
+                    <p className="pc-rv-sub">AI พยายามเปลี่ยน Link (https://example.com/pricing) ซึ่งเป็น Block ที่ห้ามแตะ</p>
+                    <p className="pc-rv-sub">ระบบไม่นำส่วนอื่นจากผลลัพธ์ชุดนี้มาใช้ต่อ เพราะอาจเกี่ยวข้องกัน ฉบับเดิมของคุณยังอยู่ครบ ไม่มีอะไรเปลี่ยน</p>
                 </div>
             ) : (
                 <>

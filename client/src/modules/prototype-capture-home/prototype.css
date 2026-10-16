@@ -603,10 +603,6 @@
     color: var(--pc-accent);
 }
 
-.pc-br-warn {
-    color: #f85149;
-}
-
 .pc-br-body {
     padding: 8px 40px 160px 56px;
 }
@@ -705,21 +701,6 @@
 
 .pc-gc-seg button:disabled {
     opacity: 0.35;
-}
-
-.pc-gr-error,
-.pc-gr-hint {
-    margin: 0;
-    padding: 0 12px 6px;
-    font-size: 13px;
-}
-
-.pc-gr-error {
-    color: #f85149;
-}
-
-.pc-gr-hint {
-    color: var(--pc-muted);
 }
 
 .pc-gr-cols {

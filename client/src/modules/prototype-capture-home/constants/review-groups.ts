@@ -39,15 +39,7 @@ export const REVIEW_ITEMS: ReviewItem[] = [
     },
     { kind: 'context', id: 'k2', block: { kind: 'reference', text: 'โปรเจกต์ A' } },
     { kind: 'context', id: 'k3', block: { kind: 'code', text: "SELECT * FROM orders WHERE customer = 'B2B'" } },
-    {
-        kind: 'change',
-        group: {
-            id: 'g5', type: 'edit',
-            left: [{ kind: 'link', text: 'https://example.com/pricing' }],
-            right: [{ kind: 'link', text: 'https://example.com/price-list' }],
-            blockedReason: 'AI พยายามเปลี่ยน Link ซึ่งระบบกำหนดให้คงไว้ จึงใช้ได้เฉพาะฉบับเดิม',
-        },
-    },
+    { kind: 'context', id: 'k5', block: { kind: 'link', text: 'https://example.com/pricing' } },
     { kind: 'context', id: 'k4', block: { kind: 'file', text: 'quote-draft.pdf' } },
     {
         kind: 'change',

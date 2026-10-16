@@ -34,7 +34,6 @@ export interface ChangeGroup {
     right: ReviewBlock[]
     relation?: string
     movesToEnd?: boolean
-    blockedReason?: string
 }
 
 export type ReviewItem =

@@ -8,7 +8,7 @@ export function changeGroups(items: ReviewItem[]): ChangeGroup[] {
 export function bulkSelection(items: ReviewItem[], pick: Pick): Selection {
     const selection: Selection = {}
     changeGroups(items).forEach((group) => {
-        selection[group.id] = group.blockedReason ? 'original' : pick
+        selection[group.id] = pick
     })
     return selection
 }
@@ -20,7 +20,6 @@ export function summarize(items: ReviewItem[], selection: Selection) {
         total: groups.length,
         ai,
         original: groups.length - ai,
-        blocked: groups.filter((group) => group.blockedReason).length,
         protectedUnchanged: items.filter((item) => item.kind === 'context' && PROTECTED_KINDS.includes(item.block.kind)).length,
     }
 }

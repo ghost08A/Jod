@@ -38,8 +38,6 @@ export function GroupControlBar({ group, picked, onPick }: GroupControlBarProps)
                 <button
                     type="button"
                     className={picked === 'ai' ? 'is-on' : ''}
-                    disabled={Boolean(group.blockedReason)}
-                    title={group.blockedReason}
                     onClick={() => onPick('ai')}
                 >
                     {BUTTON_LABEL[set].ai}
