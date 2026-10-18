@@ -38,6 +38,7 @@ Product Design ที่ Requirements, User Flow, Business Rules และ Core 
 - [Platform & UX leftovers](tickets/019-platform-and-ux-leftovers.md): Responsive Web ก่อน มือถือต้องใช้ได้จริง; ธีมมืดอย่างเดียว; Title เริ่มต้น "Untitled"; หน้าบันทึกชนกันใช้ Side-by-side; ไม่ลดความสว่างข้อความ
 - [Slash commands](tickets/020-slash-commands.md): 3 หมวด (ข้อความ / Note-ลิงก์ / เนื้อหาพิเศษ) แยก /note กับ /reference; Image/Callout เป็น Block แยก ทั้งคู่เป็น Protected Block
 - [Prototype: slash menu](tickets/021-prototype-slash-menu.md): เลือก Variant A (รายการลอย แบ่งหมวด) /note สร้างทันที ไม่เปลี่ยนกฎ 002; prototype อยู่ branch `prototype/slash-menu`
+- [Prototype tests: slash menu](tickets/022-prototype-slash-tests.md): ผ่าน 13 ข้อ ไม่มี Failed; Blocked 7 ข้อ (Nested Blocks, การแตะจริง, แป้นพิมพ์มือถือจริง) เป็นเกณฑ์ตรวจรับของ Editor จริง; Variant A สุดท้าย
 - [Prototype: AI review & conflict](tickets/018-prototype-ai-review-conflict.md): AI จัดโครงสร้างใช้ Side-by-side เลือกรับรายรายการ + Preview ก่อนยืนยัน; บันทึกชนกันเลือก Side-by-side (019); prototype อยู่ branch `prototype/ai-review`
 
 สรุปรวมทุกการตัดสินใจ: [docs/product-spec.md](../product-spec.md)
@@ -46,11 +47,11 @@ Product Design ที่ Requirements, User Flow, Business Rules และ Core 
 
 | # | Ticket | Type | Blocked by |
 |---|---|---|---|
-| 022 | [Prototype tests: slash menu](tickets/022-prototype-slash-tests.md) | prototype | - |
+| 023 | [Architecture decisions](tickets/023-architecture-decisions.md) | grilling | - |
 
 
 
-Ticket 001-021 ปิดแล้ว (ถึง Destination ของ Product Design; 017-021 เป็นงานเสริมด้าน UX) 022 เปิดอยู่ คำถามที่ยังเปิดอยู่ดู [open-questions.md](../open-questions.md)
+Ticket 001-022 ปิดแล้ว (ถึง Destination ของ Product Design; 017-022 เป็นงานเสริมด้าน UX) 023 เปิดอยู่ (Architecture decisions) การตัดสินใจที่ย้อนกลับยากอยู่ใน [docs/adr/](../adr/) คำถามที่ยังเปิดอยู่ดู [open-questions.md](../open-questions.md)
 
 
 ## Not yet specified
