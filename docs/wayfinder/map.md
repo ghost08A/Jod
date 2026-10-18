@@ -30,13 +30,13 @@ Product Design ที่ Requirements, User Flow, Business Rules และ Core 
 - [Attachments](tickets/011-attachments.md): ไฟล์เป็น Block ใน Note ตามไปกับ Note
 - [AI data boundary](tickets/012-ai-data-boundary.md): ส่ง Note ที่วิเคราะห์ + Title/Context ของที่วางได้; แจ้งครั้งแรก
 - [Share link rules](tickets/009-share-link-rules.md): แชร์ทั้งกิ่งดูอย่างเดียว; การ์ดในกิ่งที่แชร์เปิด Note ปลายทางพร้อมลูกหลานได้; เลือกจำกัด email/ใครก็ได้; เพิกถอน+วันหมดอายุ; Merge แล้ว Link ใช้ไม่ได้
-- [AI Markdown formatting](tickets/013-ai-markdown-formatting.md): AI จัดโครงสร้าง/เรียบเรียง/เพิ่มเนื้อหาได้; ห้ามแตะการ์ด/ไฟล์/Code/Link; เลือกรับรายรายการ + Preview ก่อนยืนยัน; ห้ามแตะถูกแก้=ทิ้งทั้งชุด
+- [AI Markdown formatting](tickets/013-ai-markdown-formatting.md): AI จัดโครงสร้าง/เรียบเรียง/เพิ่มเนื้อหาได้; ห้ามแตะ Protected Block (ดู 013); เลือกรับรายรายการ + Preview ก่อนยืนยัน; ห้ามแตะถูกแก้=ทิ้งทั้งชุด
 - [Email verification & account](tickets/014-email-verification-account.md): ยังไม่ยืนยันห้ามสร้าง Share Link; ผู้รับต้องยืนยัน; เปลี่ยน email ไม่ได้ v1
 - [Error logging](tickets/015-error-logging.md): ผู้ใช้เห็นข้อความ+รหัสอ้างอิง; log ไม่เก็บเนื้อหา/email; AI ล้ม Note ไม่เสีย
 - [Main user flows](tickets/016-main-user-flows.md): [flows.md](flows.md) ยืนยันแล้ว; ของใหม่เข้ากิ่งที่แชร์ถูกแชร์อัตโนมัติ+เตือน
 - [Prototype: capture & home](tickets/017-prototype-capture-home.md): เลือก layout C (canvas โล่ง ธีมมืด แถบข้างซ่อนได้ ปุ่ม "จัดวาง" เล็กๆ มุมขวาบน); prototype อยู่ branch `prototype/capture-home`
-- [Platform & UX leftovers](tickets/019-platform-and-ux-leftovers.md): ใช้บนมือถือและคอม; ธีมมืดอย่างเดียว; Title เริ่มต้น "Untitled"; หน้าบันทึกชนกันใช้ Side-by-side; ไม่ลดความสว่างข้อความ
-- [Slash commands](tickets/020-slash-commands.md): 3 หมวด (ข้อความ / Note-ลิงก์ / เนื้อหาพิเศษ) แยก /note กับ /reference; เพิ่ม Block รูปภาพและ Callout
+- [Platform & UX leftovers](tickets/019-platform-and-ux-leftovers.md): Responsive Web ก่อน มือถือต้องใช้ได้จริง; ธีมมืดอย่างเดียว; Title เริ่มต้น "Untitled"; หน้าบันทึกชนกันใช้ Side-by-side; ไม่ลดความสว่างข้อความ
+- [Slash commands](tickets/020-slash-commands.md): 3 หมวด (ข้อความ / Note-ลิงก์ / เนื้อหาพิเศษ) แยก /note กับ /reference; Image/Callout เป็น Block แยก ทั้งคู่เป็น Protected Block
 - [Prototype: slash menu](tickets/021-prototype-slash-menu.md): เลือก Variant A (รายการลอย แบ่งหมวด) /note สร้างทันที ไม่เปลี่ยนกฎ 002; prototype อยู่ branch `prototype/slash-menu`
 - [Prototype: AI review & conflict](tickets/018-prototype-ai-review-conflict.md): AI จัดโครงสร้างใช้ Side-by-side เลือกรับรายรายการ + Preview ก่อนยืนยัน; บันทึกชนกันเลือก Side-by-side (019); prototype อยู่ branch `prototype/ai-review`
 
@@ -44,9 +44,13 @@ Product Design ที่ Requirements, User Flow, Business Rules และ Core 
 
 ## Frontier / Tickets
 
+| # | Ticket | Type | Blocked by |
+|---|---|---|---|
+| 022 | [Prototype tests: slash menu](tickets/022-prototype-slash-tests.md) | prototype | - |
 
 
-Ticket 001-021 ปิดหมดแล้ว (ถึง Destination ของ Product Design; 017-021 เป็นงานเสริมด้าน UX)
+
+Ticket 001-021 ปิดแล้ว (ถึง Destination ของ Product Design; 017-021 เป็นงานเสริมด้าน UX) 022 เปิดอยู่ คำถามที่ยังเปิดอยู่ดู [open-questions.md](../open-questions.md)
 
 
 ## Not yet specified

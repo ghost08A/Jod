@@ -60,6 +60,10 @@ _Avoid_: Combine
 Link ที่ให้คนอื่นดู Note พร้อมลูกหลานทั้งกิ่งได้อย่างเดียว เลือกได้ว่าใครมี Link ก็ดูได้ หรือจำกัดด้วย email
 _Avoid_: Public page, Invite
 
+**Protected Block**:
+Block ที่ AI Formatting ต้องไม่แก้เนื้อหา เปลี่ยนชนิด ลบ ย้ายตำแหน่ง หรือปรับโครงสร้าง ได้แก่ รูปภาพ, ไฟล์, Callout, Code, Reference Card, Link ผู้ใช้แก้เองได้
+_Avoid_: Locked block
+
 ## Retired terms
 
 **Topic**: ไม่ใช่ศัพท์ของระบบ ใช้ "Note ที่มี Child" หรือ "ตำแหน่งใน Tree" แทน
