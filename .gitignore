@@ -38,6 +38,9 @@ Thumbs.db
 !.env.example
 secrets.json
 
+# Local dev settings that may hold real keys (template: appsettings.Development.example.json)
+appsettings.Development.json
+
 # ==========================================
 # Logs & Databases
 # ==========================================
