@@ -1,0 +1,2 @@
+VERIFY-DATA | must | FAIL | all seeded files identical (sha256) | NoSuchKeyException 404 NoSuchKey: The specified key does not exist.
+VERIFY-AUTH | must | FAIL | identity still works and anonymous is denied after restart | NullReferenceException: Object reference not set to an instance of an object.

@@ -1,0 +1,5 @@
+# PoC: tell SeaweedFS the public URL clients sign for (needed behind a reverse proxy that rewrites Host)
+services:
+  seaweedfs:
+    environment:
+      S3_EXTERNAL_URL: http://files.jod.test:8333

@@ -1,0 +1,2 @@
+VERIFY-DATA | must | PASS | all seeded files identical (sha256) | 3 files ok
+VERIFY-AUTH | must | PASS | identity still works and anonymous is denied after restart | ok

@@ -1,0 +1,4 @@
+BUCKETS-app_rwl | record | INFO | ListBuckets: which bucket names are visible, and can the other bucket be read/written? | visible=[jod-test]; head other=denied(403 Forbidden); put other=denied(403 AccessDenied)
+BUCKETS-app_ro | record | INFO | ListBuckets: which bucket names are visible, and can the other bucket be read/written? | visible=[jod-test]; head other=denied(403 Forbidden); put other=denied(403 AccessDenied)
+BUCKETS-app_admin | record | INFO | ListBuckets: which bucket names are visible, and can the other bucket be read/written? | visible=[jod-test]; head other=denied(403 Forbidden); put other=denied(403 AccessDenied)
+BUCKETS-admin | record | INFO | ListBuckets: which bucket names are visible, and can the other bucket be read/written? | visible=[jod-other,jod-test]; head other=denied(404 NotFound); put other=allowed

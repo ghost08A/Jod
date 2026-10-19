@@ -1,0 +1,5 @@
+# PoC only: publish S3 on loopback so the host-side harness can run (and control docker stop/start).
+services:
+  seaweedfs:
+    ports:
+      - "127.0.0.1:8333:8333"

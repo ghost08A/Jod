@@ -1,0 +1,17 @@
+F1 | must | PASS | file referenced by a Note block cannot be deleted | kept
+F2 | must | PASS | Note in Trash still counts as referencing (even with a sweep of zero grace) | kept through trash and restore
+F3 | must | PASS | removing the last block reference deletes the object and row | deleted
+F4a | must | PASS | Merge A into B: file stays and is now referenced by B; deleted when B drops it | ok
+F4b | must | PASS | Merge where B already references the same file does not fail or double count | ok
+F5a | must | PASS | Undo snapshot keeps a file that AI formatting removed from the note; Undo restores the reference | ok
+F5b | must | PASS | when the Undo snapshot expires and nothing else references the file, it is deleted | ok
+F6 | must | PASS | permanent delete of a Note: files shared with another Note stay, exclusive files are deleted | ok
+F7 | must | PASS | uploaded-but-not-yet-referenced file survives the sweep inside the grace period and is removed after it | ok
+F8-storage-delete-fails | must | PASS | if the object delete fails, the row stays 'deleting' (no new refs) and a later sweep finishes the job | ok
+F9-race | must | PASS | 400 races (random 0-8 ms offset) of 'remove last ref + delete' vs 'add ref from another note': never a reference to a missing object | 0 violations (add won 60, delete won 340)
+G1-storage-down-small | must | PASS | storage down during a small upload: not marked ready, cannot be referenced | upload threw; new rows=1, ready=0
+G1-storage-down-multipart | must | PASS | storage dies after part 2 of a 40 MB multipart upload: not ready, no object, leftover multipart cleanable | threw; new rows=1, ready=0; leftover multipart after restart=1, after cleanup=0
+G2-cancel | must | PASS | upload cancelled after part 2: not ready, multipart aborted (no leftover) | cancelled; new rows=1, ready=0, leftover multipart=0
+G3-no-permission | must | PASS | read-only identity: upload fails, not marked ready | rejected: AmazonS3Exception 403 AccessDenied: Access Denied.
+G3-missing-bucket | must | PASS | bucket does not exist: upload fails, not marked ready (and the app identity does not auto-create it) | rejected: AmazonS3Exception 403 AccessDenied: Access Denied.
+G4-db-fails-after-store | must | PASS | object stored but DB cannot mark ready: not referenceable; sweep/reconcile remove the leftovers | reconcile removed 306 row-less object(s)

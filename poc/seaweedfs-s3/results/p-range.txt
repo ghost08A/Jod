@@ -1,0 +1,1 @@
+B7-range | record | INFO | ranged GET through the SDK (what a backend proxy would use to support Range) | HTTP 206, Content-Range=bytes 1000-1099/5242880, 100 bytes match

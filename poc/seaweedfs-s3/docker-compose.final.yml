@@ -1,0 +1,18 @@
+# "Final" security configuration under test (isolated network, JWT, mTLS, admin UI off, telemetry off, no published ports).
+# docker compose -f docker-compose.yml -f docker-compose.final.yml up -d
+services:
+  seaweedfs:
+    command: >
+      mini -dir=/data -bucket=jod-test,jod-other
+      -s3.config=/etc/seaweedfs/s3.json
+      -master.telemetry=false -webdav=false -admin.ui=false
+      -s3.port.iceberg=0 -s3.port.lance=0
+    ports: !reset []
+    environment:
+      WEED_JWT_SIGNING_KEY: ${JWT_VOL}
+      WEED_JWT_SIGNING_READ_KEY: ${JWT_VOL_READ}
+      WEED_JWT_FILER_SIGNING_KEY: ${JWT_FILER}
+      WEED_JWT_FILER_SIGNING_READ_KEY: ${JWT_FILER_READ}
+    volumes:
+      - ./.secrets/tls-final:/etc/seaweedfs/tls:ro
+      - ./security.toml:/etc/seaweedfs/security.toml:ro

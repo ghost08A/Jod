@@ -1,0 +1,44 @@
+A1-default | must | PASS | SDK default settings: put/get/delete 1 KB | works with SDK defaults (no checksum setting needed)
+A1-WHEN_REQUIRED | must | PASS | RequestChecksumCalculation/ResponseChecksumValidation=WHEN_REQUIRED: put/get/delete 1 KB | works
+A2 | must | PASS | app identity cannot create/delete buckets; other bucket still exists | create=denied(403 AccessDenied); delete=denied(403 AccessDenied)
+B1-default-1KB | must | PASS | [default] upload/download 1 KB, sha256 + content-type | ok
+B1-default-5MB | must | PASS | [default] upload/download 5 MB image, sha256 + content-type | ok
+B1-default-multipart50MB | must | PASS | [default] explicit multipart 50 MB (8 MB parts => 7 parts), ETag proves multipart | ETag ends -7, sha256 ok
+B1-default-transferutility20MB | must | PASS | [default] TransferUtility 20 MB with 5 MB parts (multipart threshold 8 MB) | ETag b-4, sha256 ok
+B1-WHEN_REQUIRED-1KB | must | PASS | [WHEN_REQUIRED] upload/download 1 KB, sha256 + content-type | ok
+B1-WHEN_REQUIRED-5MB | must | PASS | [WHEN_REQUIRED] upload/download 5 MB image, sha256 + content-type | ok
+B1-WHEN_REQUIRED-multipart50MB | must | PASS | [WHEN_REQUIRED] explicit multipart 50 MB (8 MB parts => 7 parts), ETag proves multipart | ETag ends -7, sha256 ok
+B1-WHEN_REQUIRED-transferutility20MB | must | PASS | [WHEN_REQUIRED] TransferUtility 20 MB with 5 MB parts (multipart threshold 8 MB) | ETag 0-4, sha256 ok
+B2-proxy | must | PASS | download through a backend endpoint (Results.Stream): Thai filename in Content-Disposition + bytes | raw header: attachment; filename="________________ ______.pdf"; filename*=UTF-8''%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B8%87%E0%B8%B2%E0%B8%99%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%88%E0%B8%B3%E0%B9%80%E0%B8%94%E0%B8%B7%E0%B8%AD%E0%B8%99%20%E0%B8%95%E0%B8%B8%E0%B8%A5%E0%B8%B2%E0%B8%84%E0%B8%A1.pdf
+B2-presigned | must | PASS | presigned URL + response-content-disposition override: Thai filename + bytes (plain HttpClient) | raw header: attachment; filename*=UTF-8''%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B8%87%E0%B8%B2%E0%B8%99%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%88%E0%B8%B3%E0%B9%80%E0%B8%94%E0%B8%B7%E0%B8%AD%E0%B8%99%20%E0%B8%95%E0%B8%B8%E0%B8%A5%E0%B8%B2%E0%B8%84%E0%B8%A1.pdf
+B3-delete-unreadable | must | PASS | after DeleteObject: Get=404 NoSuchKey, Head=404, not in list | get=denied(404 NoSuchKey)
+B3-delete-missing | record | INFO | behaviour of deleting a key that does not exist (single and batch) | single: ok HTTP 204; batch(1 real + 1 missing): deleted=2 errors=0
+B4-head-size | must | PASS | HeadObject returns correct size | 123457 bytes
+B4-list-1100 | must | PASS | ListObjectsV2 over 1,100 objects paginates (2 pages) and DeleteObjects cleans them | 1100 listed in 2 pages, 1100 deleted in 2 batches
+B5 | must | PASS | 10 parallel 1 MB uploads all succeed and match sha256 | 10/10 ok
+B6 | record | INFO | presigned GET: works with plain HTTP, expires (expect 403), tampered signature (expect 403) | host in URL = 127.0.0.1:8333; fresh=200 bytesOk=True; tampered=403; expired=403
+C1-anonymous | must | PASS | anonymous GET object / PUT object / list buckets all 403 | 403/403/403
+C1-wrong-credentials | must | PASS | wrong secret and unknown access key are rejected with 403 | wrong secret=denied(403 SignatureDoesNotMatch); unknown key=denied(403 InvalidAccessKeyId)
+C2-matrix-admin | record | INFO | permission matrix | put=allowed, get=allowed, head=allowed, list=allowed, multipart=allowed, abort-multipart=allowed, list-multipart=allowed, presign-get=allowed, delete=allowed, delete-batch=allowed, OTHER-get=allowed, OTHER-put=allowed, OTHER-list=allowed, OTHER-delete=allowed, create-bucket=allowed, delete-bucket=allowed, list-buckets=allowed
+C2-matrix-app_rwl | record | INFO | permission matrix | put=allowed, get=allowed, head=allowed, list=allowed, multipart=allowed, abort-multipart=allowed, list-multipart=allowed, presign-get=allowed, delete=allowed, delete-batch=allowed, OTHER-get=denied(403 AccessDenied), OTHER-put=denied(403 AccessDenied), OTHER-list=denied(403 AccessDenied), OTHER-delete=denied(403 AccessDenied), create-bucket=denied(403 AccessDenied), delete-bucket=denied(403 AccessDenied), list-buckets=allowed
+C2-app_rwl | must | PASS | identity Read/Write/List:jod-test does every required op on jod-test and nothing on jod-other/bucket admin | matches expectation
+C2-matrix-app_rwlt | record | INFO | permission matrix | put=allowed, get=allowed, head=allowed, list=allowed, multipart=allowed, abort-multipart=allowed, list-multipart=allowed, presign-get=allowed, delete=allowed, delete-batch=allowed, OTHER-get=denied(403 AccessDenied), OTHER-put=denied(403 AccessDenied), OTHER-list=denied(403 AccessDenied), OTHER-delete=denied(403 AccessDenied), create-bucket=denied(403 AccessDenied), delete-bucket=denied(403 AccessDenied), list-buckets=allowed
+C2-matrix-app_admin | record | INFO | permission matrix | put=allowed, get=allowed, head=allowed, list=allowed, multipart=allowed, abort-multipart=allowed, list-multipart=allowed, presign-get=allowed, delete=allowed, delete-batch=allowed, OTHER-get=denied(403 AccessDenied), OTHER-put=denied(403 AccessDenied), OTHER-list=denied(403 AccessDenied), OTHER-delete=denied(403 AccessDenied), create-bucket=denied(403 AccessDenied), delete-bucket=denied(403 AccessDenied), list-buckets=allowed
+C2-matrix-app_ro | record | INFO | permission matrix | put=denied(403 AccessDenied), get=allowed, head=allowed, list=allowed, multipart=denied(403 AccessDenied), abort-multipart=denied(403 AccessDenied), list-multipart=allowed, presign-get=allowed, delete=denied(403 AccessDenied), delete-batch=denied(0 ), OTHER-get=denied(403 AccessDenied), OTHER-put=denied(403 AccessDenied), OTHER-list=denied(403 AccessDenied), OTHER-delete=denied(403 AccessDenied), create-bucket=denied(403 AccessDenied), delete-bucket=denied(403 AccessDenied), list-buckets=allowed
+F1 | must | PASS | file referenced by a Note block cannot be deleted | kept
+F2 | must | PASS | Note in Trash still counts as referencing (even with a sweep of zero grace) | kept through trash and restore
+F3 | must | PASS | removing the last block reference deletes the object and row | deleted
+F4a | must | PASS | Merge A into B: file stays and is now referenced by B; deleted when B drops it | ok
+F4b | must | PASS | Merge where B already references the same file does not fail or double count | ok
+F5a | must | PASS | Undo snapshot keeps a file that AI formatting removed from the note; Undo restores the reference | ok
+F5b | must | PASS | when the Undo snapshot expires and nothing else references the file, it is deleted | ok
+F6 | must | PASS | permanent delete of a Note: files shared with another Note stay, exclusive files are deleted | ok
+F7 | must | PASS | uploaded-but-not-yet-referenced file survives the sweep inside the grace period and is removed after it | ok
+F8-storage-delete-fails | must | PASS | if the object delete fails, the row stays 'deleting' (no new refs) and a later sweep finishes the job | ok
+F9-race | must | PASS | 400 races (random 0-8 ms offset) of 'remove last ref + delete' vs 'add ref from another note': never a reference to a missing object | 0 violations (add won 43, delete won 357)
+G1-storage-down-small | must | PASS | storage down during a small upload: not marked ready, cannot be referenced | upload threw; new rows=1, ready=0
+G1-storage-down-multipart | must | PASS | storage dies after part 2 of a 40 MB multipart upload: not ready, no object, leftover multipart cleanable | threw; new rows=1, ready=0; leftover multipart after restart=1, after cleanup=0
+G2-cancel | must | PASS | upload cancelled after part 2: not ready, multipart aborted (no leftover) | cancelled; new rows=1, ready=0, leftover multipart=0
+G3-no-permission | must | PASS | read-only identity: upload fails, not marked ready | rejected: AmazonS3Exception 403 AccessDenied: Access Denied.
+G3-missing-bucket | must | PASS | bucket does not exist: upload fails, not marked ready (and the app identity does not auto-create it) | rejected: AmazonS3Exception 403 AccessDenied: Access Denied.
+G4-db-fails-after-store | must | PASS | object stored but DB cannot mark ready: not referenceable; sweep/reconcile remove the leftovers | reconcile removed 1 row-less object(s)

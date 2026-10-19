@@ -1,0 +1,32 @@
+# PoC hardening: gRPC mutual TLS + hide filer directory metadata. JWT keys come from WEED_JWT_* env vars.
+[grpc]
+ca = "/etc/seaweedfs/tls/ca.crt"
+[grpc.volume]
+cert = "/etc/seaweedfs/tls/node.crt"
+key = "/etc/seaweedfs/tls/node.key"
+allowed_commonNames = "seaweedfs"
+[grpc.master]
+cert = "/etc/seaweedfs/tls/node.crt"
+key = "/etc/seaweedfs/tls/node.key"
+allowed_commonNames = "seaweedfs"
+[grpc.filer]
+cert = "/etc/seaweedfs/tls/node.crt"
+key = "/etc/seaweedfs/tls/node.key"
+allowed_commonNames = "seaweedfs"
+[grpc.s3]
+cert = "/etc/seaweedfs/tls/node.crt"
+key = "/etc/seaweedfs/tls/node.key"
+allowed_commonNames = "seaweedfs"
+[grpc.admin]
+cert = "/etc/seaweedfs/tls/node.crt"
+key = "/etc/seaweedfs/tls/node.key"
+allowed_commonNames = "seaweedfs"
+[grpc.worker]
+cert = "/etc/seaweedfs/tls/node.crt"
+key = "/etc/seaweedfs/tls/node.key"
+allowed_commonNames = "seaweedfs"
+[grpc.client]
+cert = "/etc/seaweedfs/tls/node.crt"
+key = "/etc/seaweedfs/tls/node.key"
+[filer.expose_directory_metadata]
+enabled = false

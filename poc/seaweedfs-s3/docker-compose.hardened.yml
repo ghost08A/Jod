@@ -1,0 +1,11 @@
+# Override: docker compose -f docker-compose.yml -f docker-compose.hardened.yml up -d
+services:
+  seaweedfs:
+    environment:
+      WEED_JWT_SIGNING_KEY: ${JWT_VOL}
+      WEED_JWT_SIGNING_READ_KEY: ${JWT_VOL_READ}
+      WEED_JWT_FILER_SIGNING_KEY: ${JWT_FILER}
+      WEED_JWT_FILER_SIGNING_READ_KEY: ${JWT_FILER_READ}
+    volumes:
+      - ./.secrets/tls:/etc/seaweedfs/tls:ro
+      - ./security.toml:/etc/seaweedfs/security.toml:ro

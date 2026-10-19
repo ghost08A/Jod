@@ -1,0 +1,1 @@
+SMOKE | must | PASS | put/get/delete via http://127.0.0.1:18333 | ok
