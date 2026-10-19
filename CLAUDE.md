@@ -27,6 +27,8 @@ first — no exceptions for small changes.
 - `.env.example` is the only env file allowed in version control — placeholder values only
 - Never expose stack traces or internal error details in API responses
 - `appsettings.Example.json` is also an acceptable config template alongside `.env.example` — placeholder values only
+- `appsettings.Development.json` is local-only (gitignored, never committed, may hold real dev keys); `appsettings.Development.example.json` is its template (placeholders only)
+- `appsettings.json` and any other tracked config file never contain secrets; production uses environment variables or a secrets manager
 
 ## Definition of Done
 

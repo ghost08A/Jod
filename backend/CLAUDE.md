@@ -93,7 +93,8 @@ backend/
     ├── Controllers/           # route `api/[controller]`
     ├── Properties/launchSettings.json
     ├── appsettings.json
-    ├── appsettings.Development.json
+    ├── appsettings.Development.json           # local only, gitignored (may hold dev keys)
+    ├── appsettings.Development.example.json
     └── Program.cs             # app composition + DI
 ```
 
