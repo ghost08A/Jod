@@ -45,13 +45,11 @@ Product Design ที่ Requirements, User Flow, Business Rules และ Core 
 
 ## Frontier / Tickets
 
-| # | Ticket | Type | Blocked by |
-|---|---|---|---|
-| 023 | [Architecture decisions](tickets/023-architecture-decisions.md) | grilling | - |
+ไม่มี ticket ที่เปิดอยู่
 
 
 
-Ticket 001-022 ปิดแล้ว (ถึง Destination ของ Product Design; 017-022 เป็นงานเสริมด้าน UX) 023 เปิดอยู่ (Architecture decisions) การตัดสินใจที่ย้อนกลับยากอยู่ใน [docs/adr/](../adr/) คำถามที่ยังเปิดอยู่ดู [open-questions.md](../open-questions.md)
+Ticket 001-023 ปิดแล้ว (ถึง Destination ของ Product Design; 017-022 เป็นงานเสริมด้าน UX; 023 ตัดสิน Architecture โดยเงื่อนไขก่อน Production ที่เหลืออยู่ใน ADR 0001, 0007, 0008, 0009) การตัดสินใจที่ย้อนกลับยากอยู่ใน [docs/adr/](../adr/) คำถามที่ยังเปิดอยู่ดู [open-questions.md](../open-questions.md)
 
 
 ## Not yet specified
