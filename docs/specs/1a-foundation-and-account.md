@@ -11,7 +11,7 @@
 ## 0. ที่มาและหลักฐาน (ตรวจจากไฟล์และแหล่งอ้างอิงจริง 2026-10-20)
 
 - ขอบเขต 1a กำหนดโดยผู้ใช้: บัญชีผู้ใช้ Authentication/Authorization, PostgreSQL, Docker Compose และ CI ส่วน 1b (Note พื้นฐาน, Block schema ขั้นต่ำ, Autosave, ตรวจบันทึกชนกัน, Editor บนเดสก์ท็อปและมือถือ) ทำ to-spec แยกหลัง 1a ผ่านการตรวจรับ
-- สถานะโค้ดปัจจุบัน: `backend/` และ `client/` มีเฉพาะตัวอย่าง WeatherForecast (`Web.Jod`, `Jod.Service`, `Jod.Domain`, `Jod.Service.Tests` ทุกโปรเจกต์เป็น `net8.0`) ไม่มี CI ไม่มี Dockerfile/compose ไม่มี `.env.example` ระดับราก
+- สถานะโค้ดปัจจุบัน: `backend/` และ `client/` มีเฉพาะโค้ดตัวอย่างเริ่มต้นของเทมเพลต (`Web.Jod`, `Jod.Service`, `Jod.Domain`, `Jod.Service.Tests` ทุกโปรเจกต์เป็น `net8.0`) ไม่มี CI ไม่มี Dockerfile/compose ไม่มี `.env.example` ระดับราก
 - Vite proxy `/api` ไป `http://localhost:5133` (หน้าเว็บกับ API เป็นแหล่งเดียวกันตอนพัฒนา) Vitest ตั้ง `environment: 'node'` และรวมเฉพาะ `src/**/*.test.ts` (ทดสอบตรรกะล้วนได้ ทดสอบ component ใน DOM ไม่ได้ เพราะยังไม่มี jsdom)
 - .NET 8 หมดซัพพอร์ต 2026-11-10 ส่วน .NET 10 (LTS) ถึง 2028-11-14 (หน้านโยบาย .NET ของ Microsoft) จึงมี ADR 0010
 - `MapIdentityApi` ของ Microsoft ใช้โทเคนเฉพาะที่ไม่ใช่ JWT และเอกสารระบุว่าเหมาะกับกรณีง่าย จึงไม่ใช้ในโปรเจกต์นี้ (ตาม ADR 0006 ใช้ JWT + Refresh token ที่ Jod ออกเอง)
@@ -24,7 +24,7 @@
 | บัญชีและความปลอดภัย | สมัคร, ล็อกอิน, ออกจากระบบ, ต่ออายุโทเคน (หมุนทุกครั้ง + ตรวจการใช้ซ้ำ), `GET /api/me`, นโยบายค่าเริ่มต้น "ต้องล็อกอิน", ตัวช่วย "ผู้ใช้ปัจจุบัน" สำหรับ 1b | ยืนยันอีเมล/ลืมรหัสผ่าน (1c), เปลี่ยนรหัสผ่าน, ออกจากทุกอุปกรณ์ |
 | ข้อมูล | PostgreSQL + EF Core + migration, ตารางผู้ใช้ (Identity) และ Refresh token | ตาราง Note/Block/ไฟล์/ลิงก์ |
 | หน้าเว็บ | หน้าสมัคร/ล็อกอิน/ออก และหน้าที่ต้องล็อกอินแสดงอีเมล (ไว้ตรวจรับกลไกโทเคน) ธีมมืด ใช้ได้บนมือถือ | Editor, Tree, layout แถบข้าง (1b) |
-| โครงระบบ | `docker-compose.yml` (Postgres), CI, รูปแบบ error + รหัสอ้างอิง, log ที่ console, ลบตัวอย่าง WeatherForecast | Dockerfile ของแอป, compose สำหรับ Production, TLS, SeaweedFS, Mailpit |
+| โครงระบบ | `docker-compose.yml` (Postgres), CI, รูปแบบ error + รหัสอ้างอิง, log ที่ console, ลบโค้ดตัวอย่างเริ่มต้น | Dockerfile ของแอป, compose สำหรับ Production, TLS, SeaweedFS, Mailpit |
 
 ## 2. Confirmed Decisions ที่ 1a ใช้
 
@@ -53,7 +53,7 @@
 | Q7 | สมัครสำเร็จเข้าระบบทันที และบอกได้ว่าอีเมลซ้ำที่หน้าสมัคร |
 | Q8 | รหัสผ่านขั้นต่ำ 10 ตัวอักษร, ล็อกบัญชี 5 ครั้ง/5 นาที, จำกัดอัตรา 10 คำขอ/นาที/IP ที่สมัคร/ล็อกอิน และ 60 คำขอ/นาที/IP ที่ต่ออายุ (ผู้ใช้เลือกแยกโควตา 2026-10-20), เวลาเหลื่อมของ Access token 30 วินาที |
 | Q9 | เทสต์การเชื่อมต่อใช้ PostgreSQL จริง (compose/service container) ไม่ใช้ in-memory และเพิ่มโปรเจกต์เทสต์ใหม่ |
-| Q10 | ลบตัวอย่าง WeatherForecast ใน 1a หลังมีโมดูล auth เป็นแบบอย่างแทน (ทั้ง backend และ `modules/weather` ฝั่งหน้าเว็บ) |
+| Q10 | ลบโค้ดตัวอย่างเริ่มต้นใน 1a หลังมีโมดูล auth เป็นแบบอย่างแทน (ทั้งฝั่ง backend และหน้าเว็บ) |
 | Q11 | เก็บ to-spec เป็นไฟล์ในโฟลเดอร์ `docs/specs/` ก่อน |
 | Q12 | ชื่อใหม่ที่ใช้: `IAuthService`, `AuthService`, `RegisterRequestModel`, `LoginRequestModel`, `AuthResultViewModel`, `UserViewModel`, `AppUser`, `RefreshToken`, `JodDbContext`, `AuthController`, `RegistrationMode` (ค่าตั้งค่า) ชื่ออื่นที่เพิ่มระหว่างลงมือต้องขอยืนยันตามกฎใน `backend/CLAUDE.md` |
 
@@ -146,7 +146,7 @@
 - **Jod.Service [ร่าง]:** `JodDbContext` (Identity + Refresh token), `AuthService` (ออก/หมุน/เพิกถอนโทเคน, ตรวจกติกา), การตั้งค่าแบบ Options, migrations, `AppUser`
 - **Jod.Domain [ร่าง]:** `IAuthService`, `RegisterRequestModel`, `LoginRequestModel`, `AuthResultViewModel`, `UserViewModel`, `CustomError` เดิม
 - **แพ็กเกจที่เสนอ [ยังไม่ได้ตรวจความเข้ากันได้กับ .NET 10]:** `Microsoft.AspNetCore.Authentication.JwtBearer`, `Microsoft.AspNetCore.Identity.EntityFrameworkCore`, `Npgsql.EntityFrameworkCore.PostgreSQL`, `Microsoft.EntityFrameworkCore.Design`, ฝั่งเทสต์ `Microsoft.AspNetCore.Mvc.Testing` และเครื่องมือ `dotnet-ef` แบบ local tool
-- **ฝั่งหน้าเว็บ [ร่าง]:** `modules/auth/` (components, hooks, services, types, utils) ตามโครงของ `modules/weather`, ขยาย `core/http` ให้แนบ Access token และต่ออายุเมื่อเจอ 401 พร้อม Web Locks + BroadcastChannel, ตัวป้องกันเส้นทางใน `core/router`, `AuthProvider` ใน `core/providers` ตรรกะที่ทดสอบได้ใส่ใน `utils/` เป็น `*.test.ts` (ไม่เพิ่ม jsdom ใน 1a)
+- **ฝั่งหน้าเว็บ [ร่าง]:** `modules/auth/` (components, hooks, services, types, utils) ตามโครงที่ `client/CLAUDE.md` กำหนด, ขยาย `core/http` ให้แนบ Access token และต่ออายุเมื่อเจอ 401 พร้อม Web Locks + BroadcastChannel, ตัวป้องกันเส้นทางใน `core/router`, `AuthProvider` ใน `core/providers` ตรรกะที่ทดสอบได้ใส่ใน `utils/` เป็น `*.test.ts` (ไม่เพิ่ม jsdom ใน 1a)
 - **ธีม [ร่าง]:** ใช้ค่าสีมืดของ prototype 017 เป็นตั้งต้น (`#191919` พื้น, `#202020` แถบข้าง, ตัวอักษรขาว 90%, สีเน้น `#6cb3f5`) นิยามเป็น CSS custom properties ตามกฎใน `client/CLAUDE.md` ถือ `DESIGN.md` (วิเคราะห์ Notion ธีมสว่าง) เป็นเอกสารอ้างอิงเท่านั้น ไม่ใช่ชุดสีของ Jod
 
 ## 11. Docker Compose และ CI [ร่าง]
@@ -172,7 +172,7 @@
 13. Access token อยู่ในหน่วยความจำเท่านั้น (ไม่อยู่ใน localStorage/sessionStorage) รีเฟรชหน้าแล้วยังอยู่ในระบบ เปิด 2–3 แท็บพร้อมกันได้ โดยมีคำขอ Refresh ไม่เกิน 1 ต่อรอบ และไม่ถูกบังคับออกจากระบบผิดพลาด (ทดสอบตรรกะอัตโนมัติ + ทดสอบด้วยมือหลายแท็บ)
 14. เจอ 401 กลางการใช้งาน: หน้าเว็บ Refresh แล้วลองคำขอเดิมซ้ำ 1 ครั้งไม่เป็นลูป ถ้า Refresh ล้มเหลว → หน้าล็อกอิน
 15. CI รัน build/format/test/lint ของทั้งสองฝั่งและผ่าน ทำให้ล้มเมื่อ format ผิด Definition of Done ใน `CLAUDE.md` ผ่าน (build, test, format ใน CI, ไม่มีไฟล์ที่ไม่จำเป็น)
-16. ไม่มีตารางหรือหน้าจอของ Note (ไม่ขยายไป 1b) ตัวอย่าง WeatherForecast ถูกลบและเอกสารคำแนะนำ (`backend/CLAUDE.md`, `client/CLAUDE.md`) ตรงกับโค้ดจริง
+16. ไม่มีตารางหรือหน้าจอของ Note (ไม่ขยายไป 1b) โค้ดตัวอย่างเริ่มต้นถูกลบและเอกสารคำแนะนำ (`backend/CLAUDE.md`, `client/CLAUDE.md`) ตรงกับโค้ดจริง
 
 ## 13. Dependency และสิ่งที่เลื่อน
 
@@ -190,13 +190,13 @@
 
 ## 15. รายการไฟล์ที่จะสร้างหรือแก้ใน PR ของ 1a (ชื่อตาม Q12 ต้องยืนยัน)
 
-**Backend:** แก้ `Web.Jod/Program.cs`, ทุก `.csproj` (เป็น `net10.0` และเพิ่มแพ็กเกจ), `appsettings.json` (ค่าที่ไม่ลับ: Issuer/Audience/อายุโทเคน/โหมดสมัคร=Closed), `appsettings.Development.example.json` (ใส่ตำแหน่งกุญแจเซ็นและ connection string แบบสมมติ) · สร้าง `Controllers/AuthController.cs`, ตัวจัดการข้อผิดพลาดใน `Middleware/`, `Jod.Domain/{Interfaces,RequestModels,ViewModels}/…`, `Jod.Service/{Data/JodDbContext.cs, ImplementServices/AuthService.cs, Options/…, Migrations/…}`, `.config/dotnet-tools.json`, เทสต์ใน `Jod.Service.Tests/` และโปรเจกต์เทสต์การเชื่อมต่อใหม่ · ลบตัวอย่าง WeatherForecast (controller, service, interface, view model, เทสต์)
+**Backend:** แก้ `Web.Jod/Program.cs`, ทุก `.csproj` (เป็น `net10.0` และเพิ่มแพ็กเกจ), `appsettings.json` (ค่าที่ไม่ลับ: Issuer/Audience/อายุโทเคน/โหมดสมัคร=Closed), `appsettings.Development.example.json` (ใส่ตำแหน่งกุญแจเซ็นและ connection string แบบสมมติ) · สร้าง `Controllers/AuthController.cs`, ตัวจัดการข้อผิดพลาดใน `Middleware/`, `Jod.Domain/{Interfaces,RequestModels,ViewModels}/…`, `Jod.Service/{Data/JodDbContext.cs, ImplementServices/AuthService.cs, Options/…, Migrations/…}`, `.config/dotnet-tools.json`, เทสต์ใน `Jod.Service.Tests/` และโปรเจกต์เทสต์การเชื่อมต่อใหม่ · ลบโค้ดตัวอย่างเริ่มต้น (controller, service, interface, view model, เทสต์)
 
-**Client:** แก้ `core/http/http-client.ts`, `main.tsx`/`App.tsx`, `vite.config.ts` (ถ้าจำเป็น) · สร้าง `modules/auth/**`, `core/router/…`, `core/providers/AuthProvider.tsx`, เทสต์ `*.test.ts`, CSS custom properties ของธีมมืด · ลบ `modules/weather`
+**Client:** แก้ `core/http/http-client.ts`, `main.tsx`/`App.tsx`, `vite.config.ts` (ถ้าจำเป็น) · สร้าง `modules/auth/**`, `core/router/…`, `core/providers/AuthProvider.tsx`, เทสต์ `*.test.ts`, CSS custom properties ของธีมมืด · ลบโมดูลตัวอย่างเริ่มต้นฝั่งหน้าเว็บ
 
 **ราก/โครงระบบ:** `docker-compose.yml`, `.env.example`, `.github/workflows/ci.yml`, `README.md` (วิธีรัน), `.gitignore`/`.dockerignore` ตามจำเป็น
 
-**เอกสาร (ใน PR เดียวกับโค้ด):** `backend/CLAUDE.md` (บรรทัดเรื่อง `net8.0` ที่ยังเหลือ, "No database/ORM yet", หัวข้อ Database / EF Core Rules, ตัวอย่าง WeatherForecast ใน Project Structure) และ `client/CLAUDE.md` (ตัวอย่าง `modules/weather`) ให้ตรงกับโค้ดจริง
+**เอกสาร (ใน PR เดียวกับโค้ด):** `backend/CLAUDE.md` (บรรทัดเรื่อง `net8.0` ที่ยังเหลือ, "No database/ORM yet", หัวข้อ Database / EF Core Rules, ตัวอย่างโครงสร้างเดิมใน Project Structure) และ `client/CLAUDE.md` (ตัวอย่างโมดูลเดิม) ให้ตรงกับโค้ดจริง
 
 ## 16. สิ่งที่ยังไม่ได้ตรวจ/ทดสอบ
 

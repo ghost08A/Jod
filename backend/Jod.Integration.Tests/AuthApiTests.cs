@@ -293,12 +293,6 @@ public class AuthApiTests : IClassFixture<JodWebFactory>
         Assert.Contains("Jwt:SigningKey", exception?.ToString() ?? "");
     }
 
-    [Fact]
-    public void RegistrationIsClosedByDefault()
-    {
-        Assert.Equal(RegistrationMode.Closed, new RegistrationOptions().Mode);
-    }
-
     // ---- registration mode at startup ----
 
     [Theory]

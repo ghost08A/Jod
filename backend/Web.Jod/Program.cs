@@ -57,7 +57,6 @@ builder.Services.AddIdentityCore<AppUser>(options =>
     })
     .AddEntityFrameworkStores<JodDbContext>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IWeatherForecastService, WeatherForecastService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)

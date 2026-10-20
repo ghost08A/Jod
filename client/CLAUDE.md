@@ -8,7 +8,8 @@ This file provides guidance to AI coding agents (Claude Code, Codex, etc.) when 
 
 - React 19 + TypeScript (`strict`)
 - Vite 8 (build/dev server; `/api` is proxied to the backend), ESLint 10 + typescript-eslint, Vitest
-- Styling: plain CSS (`src/index.css`, `src/App.css`) — nothing else detected yet
+- Routing: `react-router`
+- Styling: plain CSS. The dark theme (the only theme) is a set of CSS custom properties in `src/index.css`; a module keeps its own styles in a `.css` file next to its components
 
 ## Architecture
 
@@ -18,15 +19,16 @@ This file provides guidance to AI coding agents (Claude Code, Codex, etc.) when 
 
 ## Project Structure
 
-Layout (`modules/weather` is the sample module — copy its shape for new features):
+Layout (`modules/auth` is the reference module — copy its shape for new features):
 
 ```
 src/
     core/                     # app-wide wiring
-        http/                 # http client (base URL, interceptors)
-        router/               # route setup
-        providers/
+        http/                 # requestJson/getJson, authorized-fetch (token + one retry on 401), api-error (ApiError)
+        router/               # AppRouter, RequireAuth
+        providers/            # AuthProvider
     modules/                  # features
+        auth/                 # sign-up, login, session (the reference module)
         <module_name>/
             components/       # module components
             constants/
@@ -46,10 +48,20 @@ src/
 .env.example                  # environment template only — fake values
 ```
 
+### Auth and session rules
+
+- The access token lives in memory only, inside the session coordinator (`modules/auth/utils/refresh-coordinator.ts`, wired in `modules/auth/services/browser-session.ts`). Never put it in `localStorage`, `sessionStorage` or a cookie readable by scripts
+- The refresh token is an HttpOnly cookie that scripts cannot see. The server needs the header `X-Requested-With: jod` to renew or end a session; `auth-service.ts` adds it
+- Call the API through `requestJson`/`getJson` in `core/http`. They add the token, renew it once on a 401 and send the request again once; a second 401 ends the session. The body of such a request must be a string (JSON), because it can be sent twice
+- A renewal must never run twice at once: the refresh token rotates on every use and reusing an old one signs the user out. Web Locks make tabs take turns and a `BroadcastChannel` hands the new token to the other tabs, so only one request reaches the server
+- Sign-in, sign-up, renewal and sign-out calls use `authorized: false`
+- Every error from the server arrives as an `ApiError` (message in Thai plus a `reference`). Show the message and the reference; do not show anything else from the response
+
 ### Rules
 
 - Never put side effects inside presentational components
 - New features are added as a module under `modules/`
+- Browser-only glue (Web Locks, `BroadcastChannel`, `fetch`) stays thin and the logic around it goes in `utils/` with the browser parts passed in, because tests run in Node without a DOM
 - Do not create a new abstraction for one-off usage
 - Component filename MUST match its exported name
 
