@@ -6,7 +6,7 @@ This file provides guidance to AI coding agents (Claude Code, Codex, etc.) when 
 
 ## Tech Stack
 
-- .NET 10 LTS (`net10.0`, ADR 0010) ASP.NET Core Web API (C#, `Nullable` and `ImplicitUsings` enabled), controller-based — projects are still `net8.0` until slice 1a upgrades them
+- .NET 10 LTS (`net10.0`, ADR 0010) ASP.NET Core Web API (C#, `Nullable` and `ImplicitUsings` enabled), controller-based
 - Swagger UI via Swashbuckle.AspNetCore (Development only)
 - No database/ORM yet (EF Core goes in `Jod.Service` when the first feature needs it)
 

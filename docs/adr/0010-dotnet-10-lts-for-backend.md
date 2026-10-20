@@ -20,6 +20,13 @@ status: accepted
 - Swashbuckle.AspNetCore 6.6.2 ใช้กับ .NET 10 ได้หรือไม่ ถ้าไม่ได้ ให้อัปเดตรุ่นหรือเปลี่ยนไปใช้ตัวสร้างเอกสาร OpenAPI ที่มากับเฟรมเวิร์ก
 - ความเข้ากันได้ของ Npgsql EF provider รุ่นหลัก 10 กับ PostgreSQL 16, ชุดเทสต์ (xunit, Moq, coverlet) ที่ pin รุ่นเดิมไว้
 
+## ผลตรวจจริง (2026-10-20, SDK 10.0.401, งาน 1a-1)
+
+- ทุกโปรเจกต์ใน solution เป็น `net10.0` build ผ่าน 0 warning เทสต์เดิม 3 ข้อผ่าน `dotnet format --verify-no-changes` ผ่าน
+- Swashbuckle.AspNetCore 6.6.2 ใช้กับ .NET 10 ได้: เปิดแอปในโหมด Development แล้ว `/swagger/index.html` และ `/swagger/v1/swagger.json` ตอบ 200 (ยังไม่ได้ทดสอบทุกฟีเจอร์ของ Swashbuckle ที่ซับซ้อนกว่า controller ตัวอย่าง)
+- xunit 2.5.3, Moq 4.21.0, coverlet 6.0.0, Microsoft.NET.Test.Sdk 17.8.0 (รุ่นเดิม) รันบน net10.0 ได้ ไม่ต้องอัปเดตเพื่อให้เทสต์ผ่าน
+
 ## [ยังไม่ได้ทดสอบ]
 
-การ build และ test โค้ดตัวอย่างปัจจุบันบน .NET 10, ความเข้ากันได้ของแพ็กเกจข้างบน, และ AWSSDK.S3 บน .NET 10 (PoC ของ SeaweedFS ทดสอบบน .NET 8 ผลยังใช้เป็นหลักฐานของที่เก็บไฟล์ แต่ต้องทดสอบ SDK ซ้ำบน .NET 10 ตอนทำฟีเจอร์ไฟล์)
+- ความเข้ากันได้ของ Npgsql EF provider รุ่นหลัก 10 กับ PostgreSQL 16 (ตรวจตอนงาน 1a-3)
+- AWSSDK.S3 บน .NET 10 (PoC ของ SeaweedFS ทดสอบบน .NET 8 ผลยังใช้เป็นหลักฐานของที่เก็บไฟล์ แต่ต้องทดสอบ SDK ซ้ำบน .NET 10 ตอนทำฟีเจอร์ไฟล์)
