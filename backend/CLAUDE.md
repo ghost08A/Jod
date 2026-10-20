@@ -127,7 +127,7 @@ backend/
 
 ### Business Validation
 
-Use `CustomError` (`Jod.Domain/CustomError.cs`) for every business-validation failure — never `throw new Exception(...)`. Controllers catch it and return `400` with its `Messages`. Shape:
+Use `CustomError` (`Jod.Domain/CustomError.cs`) for every business-validation failure — never `throw new Exception(...)`. Controllers do not catch it: the central `ApiExceptionHandler` middleware (`Web.Jod/Middleware`) turns it into a `400` `application/problem+json` response whose `errors` are its `Messages` (write them in Thai, the user sees them) plus a `reference` that is also written to the log. Any other exception becomes a generic `500` with a `reference`; the log keeps only its type and stack trace, never its message. Shape:
 
 ```csharp
 public class CustomError : Exception
