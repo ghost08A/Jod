@@ -39,7 +39,7 @@ public class ApiExceptionHandler(RequestDelegate next, ILogger<ApiExceptionHandl
     {
         if (exception is CustomError customError)
         {
-            return WriteProblemAsync(context, StatusCodes.Status400BadRequest, customError.Messages, nameof(CustomError));
+            return WriteProblemAsync(context, ErrorResponses.StatusFor(customError.Kind), customError.Messages, nameof(CustomError));
         }
 
         // Note: Message is deliberately left out, the type and stack trace are enough to find the cause

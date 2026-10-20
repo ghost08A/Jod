@@ -1,10 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 using Jod.Domain;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Jod.Integration.Tests;
 
 // Note: test-only endpoints. JodWebFactory adds this assembly to the app so errors can be provoked on demand.
+[AllowAnonymous]
 [ApiController]
 [Route("api/test-errors")]
 public class TestErrorController : ControllerBase

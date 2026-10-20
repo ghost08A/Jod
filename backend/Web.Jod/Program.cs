@@ -1,17 +1,75 @@
+using Jod.Domain.Interfaces;
+using Jod.Service.Data;
+using Jod.Service.ImplementServices;
+using Jod.Service.Options;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Web.Jod.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddDbContext<Jod.Service.Data.JodDbContext>(options =>
+builder.Services.AddDbContext<JodDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")
         ?? throw new InvalidOperationException("ConnectionStrings:Default is not set (see appsettings.Development.example.json).")));
 builder.Services.AddControllers()
     .ConfigureApiBehaviorOptions(options =>
         options.InvalidModelStateResponseFactory = ErrorResponses.ThrowForInvalidModelState);
-builder.Services.AddScoped<Jod.Domain.Interfaces.IWeatherForecastService, Jod.Service.ImplementServices.WeatherForecastService>();
+
+// Settings. A missing, too short or still-placeholder signing key stops the app at startup.
+builder.Services.AddOptions<JwtOptions>()
+    .Bind(builder.Configuration.GetSection(JwtOptions.SectionName))
+    .Validate(jwt => !string.IsNullOrWhiteSpace(jwt.Issuer) && !string.IsNullOrWhiteSpace(jwt.Audience),
+        "Jwt:Issuer and Jwt:Audience must be set.")
+    .Validate(jwt => System.Text.Encoding.UTF8.GetByteCount(jwt.SigningKey) >= JwtOptions.MinimumSigningKeyBytes,
+        $"Jwt:SigningKey must be set and at least {JwtOptions.MinimumSigningKeyBytes} bytes long.")
+    .Validate(jwt => !jwt.SigningKey.StartsWith(JwtOptions.PlaceholderPrefix, StringComparison.Ordinal),
+        "Jwt:SigningKey is still the placeholder from the example settings file.")
+    .ValidateOnStart();
+builder.Services.Configure<RegistrationOptions>(builder.Configuration.GetSection(RegistrationOptions.SectionName));
+
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddIdentityCore<AppUser>(options =>
+    {
+        // Note: only the length is enforced, no required mix of letters, digits and symbols
+        options.Password.RequiredLength = AuthService.MinPasswordLength;
+        options.Password.RequireDigit = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireNonAlphanumeric = false;
+        options.User.RequireUniqueEmail = true;
+        // Note: the user name is the email, so any character an email may hold is allowed
+        options.User.AllowedUserNameCharacters = "";
+    })
+    .AddEntityFrameworkStores<JodDbContext>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IWeatherForecastService, WeatherForecastService>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<IOptions<JwtOptions>>((bearer, jwtOptions) =>
+    {
+        var jwt = jwtOptions.Value;
+        // Note: keep "sub" as "sub" instead of renaming it to the long Microsoft claim name
+        bearer.MapInboundClaims = false;
+        bearer.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidIssuer = jwt.Issuer,
+            ValidAudience = jwt.Audience,
+            IssuerSigningKey = jwt.CreateSigningKey(),
+            // Note: only HS256 is accepted, so a token cannot pick a weaker algorithm (or "none")
+            ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
+            ClockSkew = TimeSpan.FromSeconds(jwt.ClockSkewSeconds),
+        };
+    });
+// Note: every endpoint needs sign-in unless it says [AllowAnonymous]
+builder.Services.AddAuthorization(options =>
+    options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -30,6 +88,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

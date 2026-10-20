@@ -143,13 +143,27 @@ public class ErrorContractTests : IClassFixture<JodWebFactory>
     [InlineData("POST", "/api/test-errors/business-error", HttpStatusCode.MethodNotAllowed)]
     public async Task EmptyFrameworkAnswers_BecomeProblems(string method, string path, HttpStatusCode expected)
     {
+        // Arrange
+        // Note: signed in, because without a token every path (even a missing one) answers 401
+        var signedIn = await SignedInClientAsync();
+
         // Act
-        var response = await _client.SendAsync(new HttpRequestMessage(new HttpMethod(method), path));
+        var response = await signedIn.SendAsync(new HttpRequestMessage(new HttpMethod(method), path));
 
         // Assert
         var problem = await ReadProblemAsync(response, expected);
         Assert.Matches(ReferencePattern, problem.GetProperty("reference").GetString());
         Assert.NotNull(LogLineFor(problem));
+    }
+
+    private async Task<HttpClient> SignedInClientAsync()
+    {
+        var registered = await _client.PostAsJsonAsync(
+            "/api/auth/register", new { email = $"{Guid.NewGuid():N}@example.com", password = "a-long-enough-password" });
+        var token = (await registered.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("accessToken").GetString();
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new("Bearer", token);
+        return client;
     }
 
     private static async Task<JsonElement> ReadProblemAsync(HttpResponseMessage response, HttpStatusCode expected)

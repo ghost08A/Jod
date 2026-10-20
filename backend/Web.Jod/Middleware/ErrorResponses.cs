@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Jod.Domain;
+using Jod.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Web.Jod.Middleware;
@@ -15,6 +16,14 @@ public static class ErrorResponses
 
     public static string NewReference() =>
         RandomNumberGenerator.GetString(ReferenceAlphabet, ReferenceLength);
+
+    public static int StatusFor(ErrorKind kind) => kind switch
+    {
+        ErrorKind.Unauthorized => StatusCodes.Status401Unauthorized,
+        ErrorKind.Forbidden => StatusCodes.Status403Forbidden,
+        ErrorKind.Conflict => StatusCodes.Status409Conflict,
+        _ => StatusCodes.Status400BadRequest,
+    };
 
     public static ProblemDetails Create(int status, string reference, IReadOnlyList<string>? errors)
     {

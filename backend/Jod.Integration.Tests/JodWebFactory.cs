@@ -15,6 +15,9 @@ namespace Jod.Integration.Tests;
 /// </summary>
 public sealed class JodWebFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
+    // Note: a key that exists only in tests; real keys live outside git
+    public const string TestSigningKey = "test-only-signing-key-0123456789-abcdef";
+
     private readonly TestDatabase _database = new();
 
     public ConcurrentQueue<LogEntry> LogEntries { get; } = new();
@@ -40,6 +43,8 @@ public sealed class JodWebFactory : WebApplicationFactory<Program>, IAsyncLifeti
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:Default"] = _database.ConnectionString,
+                ["Jwt:SigningKey"] = TestSigningKey,
+                ["Registration:Mode"] = "Open",
             }));
         builder.ConfigureLogging(logging => logging.AddProvider(new CapturingLoggerProvider(LogEntries)));
         builder.ConfigureServices(services =>
