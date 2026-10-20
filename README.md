@@ -66,6 +66,7 @@ cp backend/Web.Jod/appsettings.Development.example.json backend/Web.Jod/appsetti
 ### 4. สร้างตารางในฐานข้อมูล
 
 ```bash
+dotnet restore backend
 dotnet tool restore
 dotnet ef database update --project backend/Jod.Service --startup-project backend/Web.Jod
 ```
