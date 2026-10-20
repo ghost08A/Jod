@@ -299,6 +299,180 @@ public class AuthApiTests : IClassFixture<JodWebFactory>
         Assert.Equal(RegistrationMode.Closed, new RegistrationOptions().Mode);
     }
 
+    // ---- registration mode at startup ----
+
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    public async Task App_WithOpenRegistrationOutsideDevelopmentAndTest_DoesNotStart(string environment)
+    {
+        // Arrange
+        using var misconfigured = _factory.WithWebHostBuilder(builder => builder.UseEnvironment(environment));
+
+        // Act
+        var exception = await Record.ExceptionAsync(() => Task.Run(() => misconfigured.CreateClient()));
+
+        // Assert
+        Assert.Contains("Registration:Mode", exception?.ToString() ?? "");
+    }
+
+    [Fact]
+    public async Task App_WithOpenRegistrationInDevelopment_Starts()
+    {
+        // Arrange
+        using var development = _factory.WithWebHostBuilder(builder => builder.UseEnvironment("Development"));
+
+        // Act
+        var response = await development.CreateClient().PostAsJsonAsync(
+            "/api/auth/register", new { email = NewEmail(), password = Password });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_WhenTheModeIsNotSetAtAll_ReturnsForbidden()
+    {
+        // Arrange
+        // Note: a null value in a later configuration source hides the "Open" set by the factory
+        using var unset = _factory.WithWebHostBuilder(builder => builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Registration:Mode"] = null })));
+
+        // Act
+        var response = await unset.CreateClient().PostAsJsonAsync(
+            "/api/auth/register", new { email = NewEmail(), password = Password });
+
+        // Assert
+        await ReadProblem(response, HttpStatusCode.Forbidden);
+    }
+
+    // ---- account lockout ----
+
+    [Fact]
+    public async Task Login_AfterFiveWrongPasswords_LocksTheAccountForFiveMinutes()
+    {
+        // Arrange
+        var email = await RegisterNewAccount();
+
+        // Act
+        await FailLogin(email, 5);
+        var correctWhileLocked = await Login(email, Password);
+        var wrongWhileLocked = await Login(email, "not-the-password");
+
+        // Assert
+        var locked = await ReadProblem(correctWhileLocked, HttpStatusCode.Unauthorized);
+        var wrong = await ReadProblem(wrongWhileLocked, HttpStatusCode.Unauthorized);
+        Assert.Equal([InvalidLoginMessage], ReadErrors(locked));
+        Assert.Equal(ReadErrors(wrong), ReadErrors(locked));
+        Assert.Equal(wrong.GetProperty("detail").GetString(), locked.GetProperty("detail").GetString());
+
+        var lockoutEnd = (await ReadUser(email)).LockoutEnd;
+        Assert.NotNull(lockoutEnd);
+        Assert.InRange(lockoutEnd.Value - DateTimeOffset.UtcNow, TimeSpan.FromMinutes(4), TimeSpan.FromMinutes(5.5));
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(40)]
+    public async Task Login_WithManyWrongPasswordsAtTheSameTime_StillLocksTheAccount(int attempts)
+    {
+        // Arrange
+        // Note: regression test. Identity's own counter lost most of these attempts and never locked the account
+        var email = await RegisterNewAccount();
+
+        // Act
+        await Task.WhenAll(Enumerable.Range(0, attempts).Select(i => Login(email, $"wrong-parallel-{i}-xxxx")));
+
+        // Assert
+        var lockoutEnd = (await ReadUser(email)).LockoutEnd;
+        Assert.True(lockoutEnd > DateTimeOffset.UtcNow, "the account should be locked after the burst");
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Login(email, Password)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_WhileLocked_DoesNotExtendTheLock()
+    {
+        // Arrange
+        var email = await RegisterNewAccount();
+        await FailLogin(email, 5);
+        var lockoutEndBefore = (await ReadUser(email)).LockoutEnd;
+        Assert.NotNull(lockoutEndBefore);
+
+        // Act
+        await FailLogin(email, 3);
+
+        // Assert
+        Assert.Equal(lockoutEndBefore, (await ReadUser(email)).LockoutEnd);
+    }
+
+    [Fact]
+    public async Task Login_AfterTheLockHasExpired_WorksAgain()
+    {
+        // Arrange
+        var email = await RegisterNewAccount();
+        await FailLogin(email, 5);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Login(email, Password)).StatusCode);
+
+        // Act
+        // Note: Identity reads the real clock, so "five minutes later" is simulated by moving the lock end into the past
+        await SetLockoutEnd(email, DateTimeOffset.UtcNow.AddSeconds(-1));
+        var response = await Login(email, Password);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_FourWrongPasswords_DoNotLockTheAccount()
+    {
+        // Arrange
+        var email = await RegisterNewAccount();
+
+        // Act
+        await FailLogin(email, 4);
+        var response = await Login(email, Password);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_Success_StartsTheWrongPasswordCountAgain()
+    {
+        // Arrange
+        var email = await RegisterNewAccount();
+
+        // Act
+        // Note: 4 + 4 wrong passwords would lock the account if the success in between did not reset the count
+        await FailLogin(email, 4);
+        var firstSuccess = await Login(email, Password);
+        await FailLogin(email, 4);
+        var secondSuccess = await Login(email, Password);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, firstSuccess.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, secondSuccess.StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_LockoutLimitComesFromSettings()
+    {
+        // Arrange
+        using var strict = _factory.WithWebHostBuilder(builder => builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Lockout:MaxFailedAccessAttempts"] = "2" })));
+        var client = strict.CreateClient();
+        var email = NewEmail();
+        await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password });
+
+        // Act
+        await client.PostAsJsonAsync("/api/auth/login", new { email, password = "wrong-one-xxxx" });
+        await client.PostAsJsonAsync("/api/auth/login", new { email, password = "wrong-two-xxxx" });
+        var response = await client.PostAsJsonAsync("/api/auth/login", new { email, password = Password });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
     // ---- logs ----
 
     [Fact]
@@ -325,6 +499,37 @@ public class AuthApiTests : IClassFixture<JodWebFactory>
     // ---- helpers ----
 
     private static string NewEmail() => $"{Guid.NewGuid():N}@example.com";
+
+    private async Task<string> RegisterNewAccount()
+    {
+        var email = NewEmail();
+        Assert.Equal(HttpStatusCode.Created, (await Register(email, Password)).StatusCode);
+        return email;
+    }
+
+    private async Task FailLogin(string email, int times)
+    {
+        for (var i = 0; i < times; i++)
+        {
+            await Login(email, $"wrong-password-{i}-xxxx");
+        }
+    }
+
+    private async Task<AppUser> ReadUser(string email)
+    {
+        using var scope = _factory.Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<JodDbContext>()
+            .Users.AsNoTracking().SingleAsync(u => u.Email == email);
+    }
+
+    private async Task SetLockoutEnd(string email, DateTimeOffset lockoutEnd)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<JodDbContext>();
+        var user = await context.Users.SingleAsync(u => u.Email == email);
+        user.LockoutEnd = lockoutEnd;
+        await context.SaveChangesAsync();
+    }
 
     private Task<HttpResponseMessage> Register(string email, string password) =>
         _client.PostAsJsonAsync("/api/auth/register", new { email, password });

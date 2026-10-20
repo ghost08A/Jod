@@ -17,6 +17,8 @@ namespace Jod.Service.ImplementServices;
 
 public class AuthService(
     UserManager<AppUser> userManager,
+    JodDbContext database,
+    IOptions<IdentityOptions> identityOptions,
     IOptions<JwtOptions> jwtOptions,
     IOptions<RegistrationOptions> registrationOptions,
     TimeProvider timeProvider) : IAuthService
@@ -74,7 +76,10 @@ public class AuthService(
     public async Task<AuthResultViewModel> LoginAsync(LoginRequestModel request)
     {
         var user = await userManager.FindByEmailAsync(request.Email.Trim());
-        if (user is null)
+
+        // Note: an unknown email and a locked account both answer exactly like a wrong password,
+        // after the same amount of hashing work, so nobody can tell them apart
+        if (user is null || await userManager.IsLockedOutAsync(user))
         {
             userManager.PasswordHasher.VerifyHashedPassword(new AppUser(), DummyPasswordHash, request.Password);
             throw InvalidLogin();
@@ -82,9 +87,11 @@ public class AuthService(
 
         if (!await userManager.CheckPasswordAsync(user, request.Password))
         {
+            await CountFailedLoginAsync(user.Id);
             throw InvalidLogin();
         }
 
+        await ResetFailedLoginsAsync(user.Id);
         return CreateAuthResult(user);
     }
 
@@ -97,6 +104,28 @@ public class AuthService(
 
     private static CustomError InvalidLogin() =>
         new("อีเมลหรือรหัสผ่านไม่ถูกต้อง", ErrorKind.Unauthorized);
+
+    /// <summary>
+    /// Adds one wrong-password to the account and locks it when the Lockout limit is reached.
+    /// It is one SQL statement on purpose: Identity's own AccessFailedAsync reads the count and then
+    /// writes it back, so many wrong passwords sent at the same moment overwrite each other and the
+    /// count stays far too low (measured: 40 parallel attempts counted as 1 or 2, account not locked).
+    /// </summary>
+    private async Task CountFailedLoginAsync(Guid userId)
+    {
+        var lockout = identityOptions.Value.Lockout;
+        var maxAttempts = lockout.MaxFailedAccessAttempts;
+        var lockedUntil = timeProvider.GetUtcNow() + lockout.DefaultLockoutTimeSpan;
+
+        // Note: in one UPDATE every right-hand side sees the old row, so both columns read the same count
+        await database.Users.Where(user => user.Id == userId).ExecuteUpdateAsync(setters => setters
+            .SetProperty(user => user.LockoutEnd, user => user.AccessFailedCount + 1 >= maxAttempts ? lockedUntil : user.LockoutEnd)
+            .SetProperty(user => user.AccessFailedCount, user => user.AccessFailedCount + 1 >= maxAttempts ? 0 : user.AccessFailedCount + 1));
+    }
+
+    private Task ResetFailedLoginsAsync(Guid userId) =>
+        database.Users.Where(user => user.Id == userId && user.AccessFailedCount > 0)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.AccessFailedCount, 0));
 
     private static void ValidateRegistration(string email, string password)
     {

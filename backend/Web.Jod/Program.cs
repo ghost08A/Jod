@@ -30,7 +30,14 @@ builder.Services.AddOptions<JwtOptions>()
     .Validate(jwt => !jwt.SigningKey.StartsWith(JwtOptions.PlaceholderPrefix, StringComparison.Ordinal),
         "Jwt:SigningKey is still the placeholder from the example settings file.")
     .ValidateOnStart();
-builder.Services.Configure<RegistrationOptions>(builder.Configuration.GetSection(RegistrationOptions.SectionName));
+builder.Services.AddOptions<RegistrationOptions>()
+    .Bind(builder.Configuration.GetSection(RegistrationOptions.SectionName))
+    // Note: open sign-up is only for development and tests, so a copied setting cannot open a real deployment to strangers
+    .Validate<IHostEnvironment>(
+        (registration, environment) => registration.Mode != RegistrationMode.Open
+            || environment.IsDevelopment() || environment.IsEnvironment("Test"),
+        "Registration:Mode = Open is only allowed in the Development and Test environments.")
+    .ValidateOnStart();
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddIdentityCore<AppUser>(options =>
@@ -42,6 +49,8 @@ builder.Services.AddIdentityCore<AppUser>(options =>
         options.Password.RequireUppercase = false;
         options.Password.RequireNonAlphanumeric = false;
         options.User.RequireUniqueEmail = true;
+        // Note: lock the account after repeated wrong passwords; the numbers come from the "Lockout" settings
+        builder.Configuration.GetSection("Lockout").Bind(options.Lockout);
         // Note: the user name is the email, so any character an email may hold is allowed
         options.User.AllowedUserNameCharacters = "";
     })
