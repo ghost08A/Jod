@@ -48,6 +48,7 @@ public sealed class JodWebFactory : WebApplicationFactory<Program>, IAsyncLifeti
                 ["Registration:Mode"] = "Open",
                 // Note: every test shares one IP, so the normal limit of 10 a minute is lifted except in the rate limit tests
                 ["RateLimit:AuthRequestsPerMinute"] = "100000",
+                ["RateLimit:RefreshRequestsPerMinute"] = "100000",
             }));
         builder.ConfigureLogging(logging => logging.AddProvider(new CapturingLoggerProvider(LogEntries)));
         builder.ConfigureServices(services =>

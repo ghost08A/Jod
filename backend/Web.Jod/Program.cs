@@ -80,21 +80,27 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
 builder.Services.AddAuthorization(options =>
     options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
-// Note: sign-up, login and token renewal allow only a few requests per minute from one IP address.
+// Note: sign-up and login allow only a few requests per minute from one IP address, token renewal a few more.
 // The window length is a setting only so tests can use a short one; the real default is one minute.
 builder.Services.AddRateLimiter(options =>
 {
-    var requestsPerWindow = builder.Configuration.GetValue("RateLimit:AuthRequestsPerMinute", 10);
     var windowSeconds = builder.Configuration.GetValue("RateLimit:AuthWindowSeconds", 60);
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.AddPolicy("auth", httpContext => RateLimitPartition.GetFixedWindowLimiter(
-        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = requestsPerWindow,
-            Window = TimeSpan.FromSeconds(windowSeconds),
-            QueueLimit = 0,
-        }));
+
+    // Note: each policy is its own bucket per IP address. Silent renewal runs on every page load and needs
+    // the right cookie, so it has a bigger bucket and cannot use up the one that protects sign-up and login.
+    void AddPerIpPolicy(string policyName, int requestsPerWindow) =>
+        options.AddPolicy(policyName, httpContext => RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = requestsPerWindow,
+                Window = TimeSpan.FromSeconds(windowSeconds),
+                QueueLimit = 0,
+            }));
+
+    AddPerIpPolicy("auth", builder.Configuration.GetValue("RateLimit:AuthRequestsPerMinute", 10));
+    AddPerIpPolicy("refresh", builder.Configuration.GetValue("RateLimit:RefreshRequestsPerMinute", 60));
 });
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

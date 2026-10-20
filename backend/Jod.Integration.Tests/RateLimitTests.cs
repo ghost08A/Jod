@@ -82,6 +82,64 @@ public class RateLimitTests : IClassFixture<JodWebFactory>
     }
 
     [Fact]
+    public async Task Renewal_AllowsSixtyRequestsAMinute_ThenRejects()
+    {
+        // Arrange
+        using var limited = WithDefaultLimit();
+        var client = limited.CreateClient();
+
+        // Act
+        var statuses = new List<HttpStatusCode>();
+        for (var i = 0; i < 60; i++)
+        {
+            statuses.Add((await PostRefresh(client)).StatusCode);
+        }
+        var rejected = await PostRefresh(client);
+
+        // Assert
+        Assert.DoesNotContain(HttpStatusCode.TooManyRequests, statuses);
+        Assert.Equal(HttpStatusCode.TooManyRequests, rejected.StatusCode);
+    }
+
+    [Fact]
+    public async Task LoginBucketFull_DoesNotBlockRenewal()
+    {
+        // Arrange
+        using var limited = WithDefaultLimit();
+        var client = limited.CreateClient();
+        for (var i = 0; i < 11; i++)
+        {
+            await PostEmpty(client);
+        }
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await PostEmpty(client)).StatusCode);
+
+        // Act
+        var renewal = await PostRefresh(client);
+
+        // Assert
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, renewal.StatusCode);
+    }
+
+    [Fact]
+    public async Task RenewalBucketFull_DoesNotBlockLogin()
+    {
+        // Arrange
+        using var limited = WithDefaultLimit();
+        var client = limited.CreateClient();
+        for (var i = 0; i < 61; i++)
+        {
+            await PostRefresh(client);
+        }
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await PostRefresh(client)).StatusCode);
+
+        // Act
+        var login = await PostEmpty(client);
+
+        // Assert
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, login.StatusCode);
+    }
+
+    [Fact]
     public async Task EndpointsOutsideAuthentication_AreNotLimited()
     {
         // Arrange
@@ -99,14 +157,19 @@ public class RateLimitTests : IClassFixture<JodWebFactory>
         Assert.DoesNotContain(HttpStatusCode.TooManyRequests, statuses);
     }
 
-    // Note: a null value hides the high limit set by the factory, so the built-in default of 10 a minute applies
+    // Note: a null value hides the high limits set by the factory, so the settings from appsettings.json apply (10 and 60 a minute)
     private WebApplicationFactory<Program> WithDefaultLimit(string? windowSeconds = null) =>
         _factory.WithWebHostBuilder(builder => builder.ConfigureAppConfiguration((_, configuration) =>
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["RateLimit:AuthRequestsPerMinute"] = null,
+                ["RateLimit:RefreshRequestsPerMinute"] = null,
                 ["RateLimit:AuthWindowSeconds"] = windowSeconds,
             })));
+
+    // Note: no X-Requested-With header, so the server answers 403 at once, but the limiter has counted the request already
+    private static Task<HttpResponseMessage> PostRefresh(HttpClient client) =>
+        client.PostAsync("/api/auth/refresh", content: null);
 
     private static Task<HttpResponseMessage> PostEmpty(HttpClient client) =>
         client.PostAsJsonAsync("/api/auth/login", new { });

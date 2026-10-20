@@ -38,7 +38,7 @@ public class AuthController(IAuthService authService, IWebHostEnvironment enviro
     }
 
     [AllowAnonymous]
-    [EnableRateLimiting("auth")]
+    [EnableRateLimiting("refresh")]
     [HttpPost("auth/refresh")]
     public async Task<IActionResult> Refresh()
     {
