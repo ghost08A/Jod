@@ -1,7 +1,11 @@
+using System.Buffers.Text;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
+using System.Text;
 using Jod.Domain;
 using Jod.Domain.Enums;
 using Jod.Domain.Interfaces;
+using Jod.Domain.Models;
 using Jod.Domain.RequestModels;
 using Jod.Domain.ViewModels;
 using Jod.Service.Data;
@@ -35,7 +39,7 @@ public class AuthService(
     private static readonly string DummyPasswordHash =
         new PasswordHasher<AppUser>().HashPassword(new AppUser(), Guid.NewGuid().ToString("N"));
 
-    public async Task<AuthResultViewModel> RegisterAsync(RegisterRequestModel request)
+    public async Task<AuthSessionModel> RegisterAsync(RegisterRequestModel request)
     {
         if (registrationOptions.Value.Mode != RegistrationMode.Open)
         {
@@ -70,10 +74,10 @@ public class AuthService(
             throw ToCustomError(result.Errors);
         }
 
-        return CreateAuthResult(user);
+        return await StartSessionAsync(user);
     }
 
-    public async Task<AuthResultViewModel> LoginAsync(LoginRequestModel request)
+    public async Task<AuthSessionModel> LoginAsync(LoginRequestModel request)
     {
         var user = await userManager.FindByEmailAsync(request.Email.Trim());
 
@@ -92,15 +96,126 @@ public class AuthService(
         }
 
         await ResetFailedLoginsAsync(user.Id);
-        return CreateAuthResult(user);
+        return await StartSessionAsync(user);
+    }
+
+    public async Task<AuthSessionModel> RefreshAsync(string? refreshToken)
+    {
+        if (string.IsNullOrEmpty(refreshToken))
+        {
+            throw NotSignedIn();
+        }
+
+        var tokenHash = HashRefreshToken(refreshToken);
+        var current = await database.RefreshTokens.AsNoTracking().SingleOrDefaultAsync(token => token.TokenHash == tokenHash)
+            ?? throw NotSignedIn();
+        var user = await userManager.FindByIdAsync(current.UserId.ToString()) ?? throw NotSignedIn();
+
+        var now = timeProvider.GetUtcNow();
+        var replacement = NewRefreshToken(current.UserId, current.FamilyId, now);
+
+        // Note: marking the old token as used and storing the new one are committed together, so another
+        // request that raced us sees either the old token still unused or both changes, never half of them
+        await using var transaction = await database.Database.BeginTransactionAsync();
+
+        // Note: one conditional UPDATE decides who may use this token. When two requests bring the same
+        // token the database lets exactly one of them change the row, and the other one gets 0 rows back
+        var claimed = await database.RefreshTokens
+            .Where(token => token.Id == current.Id && token.UsedAt == null && token.RevokedAt == null && token.ExpiresAt > now)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(token => token.UsedAt, now)
+                .SetProperty(token => token.ReplacedById, (Guid?)replacement.Token.Id));
+        if (claimed == 0)
+        {
+            await transaction.RollbackAsync();
+            await RevokeFamilyIfTokenWasReusedAsync(current.Id, current.FamilyId, now);
+            throw NotSignedIn();
+        }
+
+        database.RefreshTokens.Add(replacement.Token);
+        await database.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return BuildSession(user, replacement.Raw, replacement.Token.ExpiresAt);
+    }
+
+    public async Task LogoutAsync(string? refreshToken)
+    {
+        if (string.IsNullOrEmpty(refreshToken))
+        {
+            return;
+        }
+
+        var tokenHash = HashRefreshToken(refreshToken);
+        var familyId = await database.RefreshTokens
+            .Where(token => token.TokenHash == tokenHash)
+            .Select(token => (Guid?)token.FamilyId)
+            .SingleOrDefaultAsync();
+        if (familyId is not null)
+        {
+            await RevokeFamilyAsync(familyId.Value, timeProvider.GetUtcNow());
+        }
     }
 
     public async Task<UserViewModel> GetUserAsync(Guid userId)
     {
         var user = await userManager.FindByIdAsync(userId.ToString());
         // Note: a valid token for a user that no longer exists must not be accepted
-        return user is null ? throw new CustomError("ต้องเข้าสู่ระบบ", ErrorKind.Unauthorized) : ToViewModel(user);
+        return user is null ? throw NotSignedIn() : ToViewModel(user);
     }
+
+    private async Task<AuthSessionModel> StartSessionAsync(AppUser user)
+    {
+        // Note: a new sign-in starts a new family of refresh tokens, one family per device
+        var (raw, token) = NewRefreshToken(user.Id, Guid.NewGuid(), timeProvider.GetUtcNow());
+        database.RefreshTokens.Add(token);
+        await database.SaveChangesAsync();
+        return BuildSession(user, raw, token.ExpiresAt);
+    }
+
+    private (string Raw, RefreshToken Token) NewRefreshToken(Guid userId, Guid familyId, DateTimeOffset now)
+    {
+        // Note: 256 random bits. Only the SHA-256 hash is stored, the raw value exists only in the cookie
+        var raw = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(32));
+        var token = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            FamilyId = familyId,
+            TokenHash = HashRefreshToken(raw),
+            CreatedAt = now,
+            ExpiresAt = now.AddDays(jwtOptions.Value.RefreshTokenDays),
+        };
+        return (raw, token);
+    }
+
+    private static byte[] HashRefreshToken(string raw) => SHA256.HashData(Encoding.UTF8.GetBytes(raw));
+
+    /// <summary>
+    /// A token that could not be used is only suspicious if it was already used or revoked
+    /// (someone replays an old token). An expired, never-used token is just an old cookie.
+    /// </summary>
+    private async Task RevokeFamilyIfTokenWasReusedAsync(Guid tokenId, Guid familyId, DateTimeOffset now)
+    {
+        var latest = await database.RefreshTokens.AsNoTracking().SingleAsync(token => token.Id == tokenId);
+        if (latest.UsedAt is not null || latest.RevokedAt is not null)
+        {
+            await RevokeFamilyAsync(familyId, now);
+        }
+    }
+
+    private Task RevokeFamilyAsync(Guid familyId, DateTimeOffset now) =>
+        database.RefreshTokens.Where(token => token.FamilyId == familyId && token.RevokedAt == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(token => token.RevokedAt, now));
+
+    private AuthSessionModel BuildSession(AppUser user, string rawRefreshToken, DateTimeOffset refreshTokenExpiresAt) => new()
+    {
+        Result = CreateAuthResult(user),
+        RefreshToken = rawRefreshToken,
+        RefreshTokenExpiresAt = refreshTokenExpiresAt,
+    };
+
+    private static CustomError NotSignedIn() => new("ต้องเข้าสู่ระบบ", ErrorKind.Unauthorized);
 
     private static CustomError InvalidLogin() =>
         new("อีเมลหรือรหัสผ่านไม่ถูกต้อง", ErrorKind.Unauthorized);

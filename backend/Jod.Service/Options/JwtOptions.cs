@@ -16,6 +16,7 @@ public class JwtOptions
     public string SigningKey { get; set; } = "";
     public int AccessTokenMinutes { get; set; } = 15;
     public int ClockSkewSeconds { get; set; } = 30;
+    public int RefreshTokenDays { get; set; } = 30;
 
     public SymmetricSecurityKey CreateSigningKey() => new(Encoding.UTF8.GetBytes(SigningKey));
 }
