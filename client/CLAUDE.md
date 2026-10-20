@@ -19,7 +19,7 @@ This file provides guidance to AI coding agents (Claude Code, Codex, etc.) when 
 
 ## Project Structure
 
-Layout (`modules/auth` is the reference module — copy its shape for new features):
+Layout (`modules/auth` is the reference module for the folder shape and for the session parts — copy those for new features. Do **not** copy `CredentialsForm`, `RegisterPage` or `credentials-validation.ts` from it: they are old email/password code that is being removed, see Auth and session rules):
 
 ```
 src/
@@ -28,7 +28,7 @@ src/
         router/               # AppRouter, RequireAuth
         providers/            # AuthProvider
     modules/                  # features
-        auth/                 # sign-up, login, session (the reference module)
+        auth/                 # session (kept) + sign-in UI (target: Google button; today: old email/password form, to be removed)
         <module_name>/
             components/       # module components
             constants/
@@ -50,11 +50,14 @@ src/
 
 ### Auth and session rules
 
+- **Target:** Google Sign-In is the only way to sign in (ADR 0006). The sign-in page shows a Google Sign-In button, not an email/password form and not a Register page. The page loads Google Identity Services, receives the Google credential and sends it to the backend, which does all the verification. The page never decides who the user is from the credential it decodes, and it keeps no password field anywhere
+- **Current code (checked 2026-10-20):** Google Sign-In is **not implemented yet**. The first build's email + password UI is still there and is old code **to be removed, not kept alongside Google**: `CredentialsForm`, `RegisterPage`, the `/register` route, `credentials-validation.ts` (+ its test), the `login`/`register` calls in `auth-service.ts` and in `AuthContext`/`AuthProvider`, and the `emailConfirmed` field. Never extend, copy or revive them. The plan is `docs/specs/1a-foundation-and-account.md` section 17
+- Still valid and to be kept: the session coordinator, `authorized-fetch`, `requestJson`/`getJson`, `ApiError`, `AuthProvider`'s restore/sign-out logic, `RequireAuth`, the router and the rules below on tokens and cookies
 - The access token lives in memory only, inside the session coordinator (`modules/auth/utils/refresh-coordinator.ts`, wired in `modules/auth/services/browser-session.ts`). Never put it in `localStorage`, `sessionStorage` or a cookie readable by scripts
 - The refresh token is an HttpOnly cookie that scripts cannot see. The server needs the header `X-Requested-With: jod` to renew or end a session; `auth-service.ts` adds it
 - Call the API through `requestJson`/`getJson` in `core/http`. They add the token, renew it once on a 401 and send the request again once; a second 401 ends the session. The body of such a request must be a string (JSON), because it can be sent twice
 - A renewal must never run twice at once: the refresh token rotates on every use and reusing an old one signs the user out. Web Locks make tabs take turns and a `BroadcastChannel` hands the new token to the other tabs, so only one request reaches the server
-- Sign-in, sign-up, renewal and sign-out calls use `authorized: false`
+- Sign-in, renewal and sign-out calls use `authorized: false` (target: the Google credential call, refresh and logout; today the old login/register calls too, until they are removed)
 - Every error from the server arrives as an `ApiError` (message in Thai plus a `reference`). Show the message and the reference; do not show anything else from the response
 
 ### Rules
