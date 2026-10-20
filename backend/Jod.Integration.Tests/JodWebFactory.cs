@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Jod.Service.Data;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -45,10 +46,15 @@ public sealed class JodWebFactory : WebApplicationFactory<Program>, IAsyncLifeti
                 ["ConnectionStrings:Default"] = _database.ConnectionString,
                 ["Jwt:SigningKey"] = TestSigningKey,
                 ["Registration:Mode"] = "Open",
+                // Note: every test shares one IP, so the normal limit of 10 a minute is lifted except in the rate limit tests
+                ["RateLimit:AuthRequestsPerMinute"] = "100000",
             }));
         builder.ConfigureLogging(logging => logging.AddProvider(new CapturingLoggerProvider(LogEntries)));
         builder.ConfigureServices(services =>
-            services.AddControllers().AddApplicationPart(typeof(JodWebFactory).Assembly));
+        {
+            services.AddControllers().AddApplicationPart(typeof(JodWebFactory).Assembly);
+            services.AddTransient<IStartupFilter, TestRemoteIpStartupFilter>();
+        });
     }
 
     // ExceptionText is the whole exception (message included) so a leak in either place is caught
@@ -71,4 +77,21 @@ public sealed class JodWebFactory : WebApplicationFactory<Program>, IAsyncLifeti
             LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
             entries.Enqueue(new LogEntry(category, logLevel, formatter(state, exception), exception?.ToString()));
     }
+}
+
+// Note: TestServer has no real client address, so tests can pick one with the X-Test-Ip header
+internal sealed class TestRemoteIpStartupFilter : IStartupFilter
+{
+    public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+    {
+        app.Use((context, nextMiddleware) =>
+        {
+            if (context.Request.Headers.TryGetValue("X-Test-Ip", out var address))
+            {
+                context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(address.ToString());
+            }
+            return nextMiddleware();
+        });
+        next(app);
+    };
 }

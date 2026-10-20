@@ -4,6 +4,7 @@ using Jod.Service.ImplementServices;
 using Jod.Service.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using System.Threading.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -79,6 +80,23 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
 builder.Services.AddAuthorization(options =>
     options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
+// Note: sign-up, login and token renewal allow only a few requests per minute from one IP address.
+// The window length is a setting only so tests can use a short one; the real default is one minute.
+builder.Services.AddRateLimiter(options =>
+{
+    var requestsPerWindow = builder.Configuration.GetValue("RateLimit:AuthRequestsPerMinute", 10);
+    var windowSeconds = builder.Configuration.GetValue("RateLimit:AuthWindowSeconds", 60);
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("auth", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = requestsPerWindow,
+            Window = TimeSpan.FromSeconds(windowSeconds),
+            QueueLimit = 0,
+        }));
+});
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -87,6 +105,8 @@ var app = builder.Build();
 
 // Note: must stay first so it can answer for every other middleware
 app.UseMiddleware<ApiExceptionHandler>();
+// Note: an over-limit request is answered with an empty 429 here and the handler above turns it into problem+json
+app.UseRateLimiter();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
