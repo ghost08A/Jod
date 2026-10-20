@@ -1,7 +1,12 @@
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
+builder.Services.AddDbContext<Jod.Service.Data.JodDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")
+        ?? throw new InvalidOperationException("ConnectionStrings:Default is not set (see appsettings.Development.example.json).")));
 builder.Services.AddControllers();
 builder.Services.AddScoped<Jod.Domain.Interfaces.IWeatherForecastService, Jod.Service.ImplementServices.WeatherForecastService>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

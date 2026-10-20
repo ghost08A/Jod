@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="Jod.Domain/Jod.Domain.csproj" />
   <Project Path="Jod.Service/Jod.Service.csproj" />
+  <Project Path="Jod.Integration.Tests/Jod.Integration.Tests.csproj" />
   <Project Path="Jod.Service.Tests/Jod.Service.Tests.csproj" />
   <Project Path="Web.Jod/Web.Jod.csproj" />
 </Solution>
