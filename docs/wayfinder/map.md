@@ -31,7 +31,7 @@ Product Design ที่ Requirements, User Flow, Business Rules และ Core 
 - [AI data boundary](tickets/012-ai-data-boundary.md): ส่ง Note ที่วิเคราะห์ + Title/Context ของที่วางได้; แจ้งครั้งแรก
 - [Share link rules](tickets/009-share-link-rules.md): แชร์ทั้งกิ่งดูอย่างเดียว; การ์ดในกิ่งที่แชร์เปิด Note ปลายทางพร้อมลูกหลานได้; เลือกจำกัด email/ใครก็ได้; เพิกถอน+วันหมดอายุ; Merge แล้ว Link ใช้ไม่ได้
 - [AI Markdown formatting](tickets/013-ai-markdown-formatting.md): AI จัดโครงสร้าง/เรียบเรียง/เพิ่มเนื้อหาได้; ห้ามแตะ Protected Block (ดู 013); เลือกรับรายรายการ + Preview ก่อนยืนยัน; ห้ามแตะถูกแก้=ทิ้งทั้งชุด
-- [Email verification & account](tickets/014-email-verification-account.md): ยังไม่ยืนยันห้ามสร้าง Share Link; ผู้รับต้องยืนยัน; เปลี่ยน email ไม่ได้ v1
+- [Account & sign-in](tickets/014-account-and-sign-in.md): Google Sign-In อย่างเดียว (ไม่มีรหัสผ่าน/ยืนยัน email/ส่งอีเมล); ทุกบัญชีมี email ที่ Google ยืนยันแล้ว; กลุ่มปิดด้วยรายชื่ออนุญาต; เปลี่ยน email ไม่ได้
 - [Error logging](tickets/015-error-logging.md): ผู้ใช้เห็นข้อความ+รหัสอ้างอิง; log ไม่เก็บเนื้อหา/email; AI ล้ม Note ไม่เสีย
 - [Main user flows](tickets/016-main-user-flows.md): [flows.md](flows.md) ยืนยันแล้ว; ของใหม่เข้ากิ่งที่แชร์ถูกแชร์อัตโนมัติ+เตือน
 - [Prototype: capture & home](tickets/017-prototype-capture-home.md): เลือก layout C (canvas โล่ง ธีมมืด แถบข้างซ่อนได้ ปุ่ม "จัดวาง" เล็กๆ มุมขวาบน); prototype อยู่ branch `prototype/capture-home`
@@ -49,7 +49,7 @@ Product Design ที่ Requirements, User Flow, Business Rules และ Core 
 
 
 
-Ticket 001-023 ปิดแล้ว (ถึง Destination ของ Product Design; 017-022 เป็นงานเสริมด้าน UX; 023 ตัดสิน Architecture โดยเงื่อนไขก่อน Production ที่เหลืออยู่ใน ADR 0001, 0007, 0008, 0009) การตัดสินใจที่ย้อนกลับยากอยู่ใน [docs/adr/](../adr/) คำถามที่ยังเปิดอยู่ดู [open-questions.md](../open-questions.md)
+Ticket 001-023 ปิดแล้ว (ถึง Destination ของ Product Design; 017-022 เป็นงานเสริมด้าน UX; 023 ตัดสิน Architecture โดยเงื่อนไขก่อน Production ที่เหลืออยู่ใน ADR 0001, 0008, 0009) การตัดสินใจที่ย้อนกลับยากอยู่ใน [docs/adr/](../adr/) คำถามที่ยังเปิดอยู่ดู [open-questions.md](../open-questions.md)
 
 
 ## Not yet specified
