@@ -1,6 +1,6 @@
 # to-spec 1a: โครงระบบและบัญชีผู้ใช้ (Google Sign-In)
 
-สถานะ: **ฉบับแก้ตามการตัดสินใจ 2026-10-20 (Google Sign-In เป็นวิธียืนยันตัวตนวิธีเดียว) รอผู้ใช้อนุมัติแผนเปลี่ยนโค้ดในหัวข้อ 17** โค้ดที่ทำไปแล้วบน branch `feat/1a-foundation` ยังเป็นโค้ดรุ่นแรกที่ใช้ email + รหัสผ่าน ซึ่ง **ต้องถอดออกทั้งหมด** (ไม่ใช่วิธีที่ระบบปลายทางต้องรองรับร่วมกับ Google) ยังไม่ตรงกับ spec นี้ในส่วนการสมัคร/ล็อกอิน
+สถานะ: **โค้ดตาม spec นี้ทำครบแล้วทั้ง backend และหน้าเว็บ (Google Sign-In วิธีเดียว ถอดเส้นทางรหัสผ่านแล้ว) ตรวจด้วยเทสต์อัตโนมัติที่ใช้ตัวตรวจ token ปลอม ยังไม่ปิด 1a:** เหลือตรวจด้วยมือกับ Google จริง (เกณฑ์ข้อ 17) และให้ CI บน GitHub ผ่าน (เกณฑ์ข้อ 19 ข้อ ง)
 
 ป้ายกำกับในเอกสารนี้
 
@@ -13,11 +13,10 @@
 - ขอบเขต 1a กำหนดโดยผู้ใช้: บัญชีผู้ใช้ Authentication/Authorization, PostgreSQL, Docker Compose และ CI ส่วน 1b (Note พื้นฐาน, Block schema ขั้นต่ำ, Autosave, ตรวจบันทึกชนกัน, Editor บนเดสก์ท็อปและมือถือ) แยกเป็น to-spec ของตัวเอง งานช่วง 1c เดิม (ยืนยันอีเมล/ลืมรหัสผ่าน) **ยกเลิกแล้ว** เพราะใช้ Google Sign-In
 - **การตัดสินใจ 2026-10-20 (ผู้ใช้):** Jod ใช้ Google Sign-In เป็นวิธีเดียว ไม่รองรับ email + รหัสผ่านที่ Jod จัดการเอง Backend ต้องตรวจ Google ID token เอง ใช้ Google `sub` ระบุตัวตน ตรวจ `email_verified` จาก token ที่ตรวจแล้ว และห้ามเชื่อข้อมูลตัวตนจากหน้าเว็บ ต้องจำกัดผู้เข้าร่วมให้เหมาะกับกลุ่มปิด ส่วนที่ใช้ต่อได้คือ Session, JWT, Refresh token, คุกกี้ และการป้องกัน CSRF
 - **กติกาตรวจ ID token ตามเอกสาร Google (ตรวจ 2026-10-20 จาก <https://developers.google.com/identity/gsi/web/guides/verify-google-id-token>):** ตรวจลายเซ็นด้วยกุญแจสาธารณะของ Google (กุญแจหมุนเวียน แคชตาม Cache-Control), `aud` ตรง Client ID ของเรา, `iss` เป็น `accounts.google.com` หรือ `https://accounts.google.com`, `exp` ไม่หมด, `hd` มีเมื่อเป็นบัญชี Workspace, ใช้ `sub` เป็นตัวระบุตัวตน (ไม่ซ้ำและไม่ถูกนำกลับมาใช้) อีเมลเปลี่ยนได้จึงห้ามใช้เป็นกุญแจ และ Google เป็นผู้ยืนยันอีเมลที่เชื่อถือได้เฉพาะ Gmail กับบัญชี Workspace (ที่มี `hd`) เอกสารแนะนำให้ใช้ไลบรารีของ Google หรือไลบรารี JWT ทั่วไป ไม่เขียนตรวจเอง และหน้าที่ตรวจไม่ได้พูดถึง nonce
-- สถานะโค้ดปัจจุบัน: ดูหัวข้อ 17
 - Vite proxy `/api` ไป `http://localhost:5133` (หน้าเว็บกับ API เป็นแหล่งเดียวกันตอนพัฒนา) Vitest ตั้ง `environment: 'node'` ทดสอบตรรกะล้วนได้ ทดสอบ component ใน DOM ไม่ได้ (ยังไม่มี jsdom)
 - .NET 8 หมดซัพพอร์ต 2026-11-10 ส่วน .NET 10 (LTS) ถึง 2028-11-14 จึงมี ADR 0010
 - Web Locks API ใช้ได้ทั่วไปตั้งแต่ มี.ค. 2022 แต่เฉพาะบริบทที่ปลอดภัย (HTTPS หรือ localhost) (MDN)
-- `Google.Apis.Auth` รุ่น 1.77.0 (Apache-2.0) มีชุดไบนารีสำหรับ net6.0 และ netstandard2.0 ตามข้อมูล NuGet ผู้ใช้เลือกใช้เมื่อ 2026-10-20 **[ยังไม่ได้ตรวจ]** ว่าใช้กับ .NET 10 ได้จริง ต้องทดลองเป็นอย่างแรกในขั้น 2
+- `Google.Apis.Auth` รุ่น 1.77.0 (Apache-2.0) มีชุดไบนารีสำหรับ net6.0 และ netstandard2.0 ตามข้อมูล NuGet ผู้ใช้เลือกใช้เมื่อ 2026-10-20 ทดลองแล้ว 2026-10-21: build บน .NET 10 ผ่านและปฏิเสธ token ผิดรูปแบบ/ลายเซ็นปลอมได้ **[ยังไม่ได้ตรวจ]** กับ token ที่ Google เซ็นจริง
 
 ## 1. ขอบเขต
 
@@ -138,7 +137,7 @@ email **ไม่ใช่ตัวระบุบัญชี** (ใช้ Goog
 | ผู้ใช้ (`AppUser`, ตารางเรียบง่ายใหม่ ไม่ใช้ ASP.NET Core Identity) | รหัส (Guid), Google `sub` (ไม่ซ้ำ มี unique index), อีเมล (ค่าล่าสุดจาก token), วันที่สร้าง | ผู้ใช้ตัดสินเลือกทางเลือก B เมื่อ 2026-10-20 ไม่มีคอลัมน์รหัสผ่าน/ล็อกบัญชี ชื่อคอลัมน์เป็นร่าง ต้องขอยืนยันก่อนทำ migration |
 | Refresh token (`RefreshToken`) | รหัส, รหัสผู้ใช้, รหัสชุด (family), ค่าแฮช SHA-256 ของโทเคนสุ่ม 256 บิต, สร้างเมื่อ, หมดอายุเมื่อ, ถูกใช้แล้วเมื่อ, เพิกถอนเมื่อ, ถูกแทนที่โดย | ไม่เก็บโทเคนจริง (เหมือนเดิม) |
 
-- ตาราง Identity เดิม (`AspNet*` รวม `PasswordHash`, `SecurityStamp`, `AccessFailedCount`, `LockoutEnd` และ `AspNetUserLogins`) ถูกแทนที่ด้วยตารางผู้ใช้ข้างบน ตรวจแล้วว่าไม่มีฟีเจอร์อื่นใช้ (ยังไม่มี Note/Share) migration ทำตอนขั้น 5 ของหัวข้อ 17 ต้องขออนุมัติแยกก่อนทำ และต้องทำก่อนมีตาราง Note
+- ตาราง Identity เดิม (`AspNet*` รวม `PasswordHash`, `SecurityStamp`, `AccessFailedCount`, `LockoutEnd` และ `AspNetUserLogins`) ถูกแทนที่ด้วยตารางผู้ใช้ข้างบน ตรวจแล้วว่าไม่มีฟีเจอร์อื่นใช้ (ยังไม่มี Note/Share) แทนที่แล้วด้วย migration เดียว (`InitialCreate` สร้างใหม่ ไม่ใช่เพิ่มตัวที่สอง เพื่อไม่ให้ชื่อตาราง Identity ค้างในประวัติ migration) ทำก่อนมีตาราง Note ฐานข้อมูลพัฒนาที่สร้างจากรุ่นแรกต้องลบแล้วสร้างใหม่ (README)
 - กติกาการใช้ Refresh token ต้องเป็นขั้นตอนเดียวในฐานข้อมูล: อัปเดตแบบมีเงื่อนไข "ยังไม่ถูกใช้" แล้วดูว่ากระทบ 1 แถวหรือไม่ ถ้าไม่ (ถูกใช้ไปแล้ว) ถือว่าใช้ซ้ำ → เพิกถอนทั้งชุด คำขอต่ออายุพร้อมกันสองคำขอด้วยโทเคนใบเดียวกัน หนึ่งสำเร็จ อีกหนึ่ง 401 และทั้งชุดถูกเพิกถอน (เหมือนเดิม)
 - ยังไม่มีงานล้างโทเคนหมดอายุ (เลื่อนไปก่อน Production) ตาราง Note ยังไม่สร้างใน 1a ความเป็นเจ้าของของ Note ใช้ `OwnerId` (Guid) ใน 1b
 - การสร้าง/แก้ schema ในงานนี้ทำได้เพราะ to-spec นี้เป็นคำขอที่ชัดเจนตามกฎใน `backend/CLAUDE.md` migration ใช้ EF Core เก็บใน `Jod.Service`
@@ -194,7 +193,7 @@ email **ไม่ใช่ตัวระบุบัญชี** (ใช้ Goog
 - **Jod.Service:** `JodDbContext`, `AuthService` (ตรวจ token ผ่าน `IGoogleIdTokenVerifier`, ตรวจรายชื่อ, หา/สร้างผู้ใช้จากการผูก Google, ออก/หมุน/เพิกถอนโทเคน), ตัวตรวจ ID token จริง (ใช้ `Google.Apis.Auth` ดูข้างล่าง), การตั้งค่าแบบ Options, migrations, `AppUser`
 - **Jod.Domain:** `IAuthService`, `IGoogleIdTokenVerifier`, `GoogleSignInRequestModel`, `GoogleIdentity`, `AuthResultViewModel`, `UserViewModel`, `AuthSessionModel`, `CustomError`/`ErrorKind`
 - **ทำไม `IGoogleIdTokenVerifier` เป็น interface:** เป็นการเชื่อมต่อภายนอก (เครือข่ายไปหากุญแจของ Google) ตามกฎ `backend/CLAUDE.md` ว่าการเชื่อมต่อภายนอกอยู่ใน Service และเทสต์ต้องแทนด้วยตัวปลอมได้ เพราะเทสต์อัตโนมัติเรียก Google จริงไม่ได้
-- **ตัวตรวจ token (ผู้ใช้เลือก 2026-10-20):** ไลบรารีทางการ `Google.Apis.Auth` ลดงานเขียนเอง เสียหนึ่ง dependency **[ยังไม่ได้ตรวจ]** กับ .NET 10 ถ้าใช้ไม่ได้ให้รายงานผู้ใช้ก่อน ทางสำรองคือไลบรารี JWT ที่มีอยู่ (`Microsoft.IdentityModel`) กับกุญแจของ Google ซึ่งต้องเขียนและทดสอบการแคช/หมุนกุญแจเอง
+- **ตัวตรวจ token (ผู้ใช้เลือก 2026-10-20):** ไลบรารีทางการ `Google.Apis.Auth` ลดงานเขียนเอง เสียหนึ่ง dependency (build บน .NET 10 ผ่านแล้ว ยังไม่ได้ตรวจกับ token ที่ Google เซ็นจริง) ทางสำรองถ้าไม่เป็นไปตามคาดคือไลบรารี JWT ที่มีอยู่ (`Microsoft.IdentityModel`) กับกุญแจของ Google ซึ่งต้องเขียนและทดสอบการแคช/หมุนกุญแจเอง
 - **ฝั่งหน้าเว็บ:** `modules/auth/` (components, hooks, services, types, utils) ปุ่ม "Sign in with Google" โหลดสคริปต์ Google Identity Services จาก `https://accounts.google.com/gsi/client` และรับ credential ส่งต่อให้ `POST /api/auth/google` Client ID อ่านจาก `VITE_GOOGLE_CLIENT_ID` (ไม่ใช่ความลับ) ส่วน `core/http`, `core/router`, `core/providers` และตัวประสานหลายแท็บใช้ต่อได้ทั้งหมด ตรรกะที่ทดสอบได้ใส่ใน `utils/` เป็น `*.test.ts` (ไม่เพิ่ม jsdom ใน 1a)
 - **ธีม:** ใช้ธีมมืดและตัวแปร CSS ที่ทำไว้แล้ว (ตาม ticket 017) `DESIGN.md` เป็นเอกสารอ้างอิงเท่านั้น ไม่ใช่ชุดสีของ Jod
 
@@ -244,64 +243,8 @@ email **ไม่ใช่ตัวระบุบัญชี** (ใช้ Goog
 
 ## 15. สิ่งที่ยังไม่ได้ตรวจ/ทดสอบ
 
-ไลบรารี `Google.Apis.Auth` กับ .NET 10 · การทำงานของปุ่มและสคริปต์ Google บนมือถือและเบราว์เซอร์อื่น · กรณีผู้ใช้ปิดคุกกี้ของบุคคลที่สาม · ข้อจำกัดของหน้าจอขอความยินยอมโหมดทดสอบ · nonce · กฎ "`hd` หรือ `@gmail.com`" กับกลุ่มเพื่อนจริง · คุกกี้ Secure บน `http://localhost` ในแต่ละเบราว์เซอร์ · IME ภาษาไทยบนมือถือ (เป็นเกณฑ์ตรวจรับของ Editor ใน 1b) · โควตา GitHub Actions
+ตัวตรวจ `Google.Apis.Auth` กับ token ที่ Google เซ็นจริง (เทสต์อัตโนมัติใช้ตัวปลอมทั้งหมด) · การทำงานของปุ่มและสคริปต์ Google บนมือถือและเบราว์เซอร์อื่น · กรณีผู้ใช้ปิดคุกกี้ของบุคคลที่สาม · ข้อจำกัดของหน้าจอขอความยินยอมโหมดทดสอบ · nonce · กฎ "`hd` หรือ `@gmail.com`" กับกลุ่มเพื่อนจริง · คุกกี้ Secure บน `http://localhost` ในแต่ละเบราว์เซอร์ · IME ภาษาไทยบนมือถือ (เป็นเกณฑ์ตรวจรับของ Editor ใน 1b) · โควตา GitHub Actions
 
 ## 16. เอกสารที่ต้องตรงกับโค้ดใน PR เดียวกัน
 
 `backend/CLAUDE.md`, `client/CLAUDE.md`, `README.md` (ขั้นตอนตั้ง Google OAuth Client และรายชื่ออนุญาต), `backend/Web.Jod/appsettings.Development.example.json`, `client/.env.example`, ADR 0010 (รายการแพ็กเกจ)
-
-## 17. สถานะโค้ดปัจจุบันเทียบ spec นี้ และแผนเปลี่ยนโค้ด (ลบหัวข้อนี้เมื่อเปลี่ยนเสร็จ)
-
-**เป้าหมายปลายทาง (นี่คือ Requirement ของระบบ):** เข้าสู่ระบบด้วย Google Sign-In **วิธีเดียว** ไม่มีเส้นทางสมัครหรือล็อกอินด้วยรหัสผ่านเหลืออยู่ในโค้ด การตั้งค่า เทสต์ หรือเอกสาร และระบบปลายทาง **ไม่รองรับสองวิธีร่วมกัน**
-
-**สถานะโค้ดตอนนี้ (ตรวจ 2026-10-20 จากโค้ดจริง):** บน branch `feat/1a-foundation` มีเฉพาะเส้นทาง email + รหัสผ่าน ยังไม่มีโค้ด Google เลย Email/Password ในโค้ดนี้เป็น **โค้ดจากการพัฒนารุ่นแรกก่อนการตัดสินใจ 2026-10-20 ที่ต้องถอดออกทั้งหมด** ไม่ใช่วิธีเข้าสู่ระบบที่ต้องรองรับร่วมกับ Google และห้ามต่อยอดหรือใช้เป็นแบบอย่าง
-
-**ขั้นตอน 2–4 ด้านล่างเป็นเพียงลำดับระหว่างพัฒนา ไม่ใช่ Requirement:** แบ่งเป็นขั้นเพื่อให้ทดสอบได้ทีละส่วนและมีทางถอยกลับ ระหว่างขั้น 2–4 ในเครื่องนักพัฒนาอาจมีโค้ดหน้าเว็บของเส้นทางรหัสผ่านเหลือชั่วคราว **สถานะนั้นห้ามถือเป็นผลงาน 1a ที่เสร็จ ห้ามปล่อย และห้ามเขียนเอกสารว่ารองรับสองวิธี** งาน 1a ถือว่าเสร็จก็ต่อเมื่อผ่านขั้น 5 และเกณฑ์ตรวจรับข้อ 19 ในหัวข้อ 12 เท่านั้น
-
-### รายการโค้ดที่ใช้ต่อ / ปรับ / ถอด / ยังไม่ตัดสิน
-
-| ส่วน | ที่ตั้ง | สถานะ |
-|---|---|---|
-| **Backend** ออก Access token (JWT), JwtBearer, นโยบายต้องล็อกอินเป็นค่าเริ่มต้น, `GetUserId` | `AuthService.CreateAuthResult`, `Program.cs`, `ClaimsPrincipalExtensions` | **ใช้ต่อ** |
-| Backend Refresh token หมุน/ตรวจใช้ซ้ำ/เพิกถอนชุด, คุกกี้, หัวข้อ `X-Requested-With`, ออกจากระบบ | `AuthService` (Refresh/Logout/StartSession/NewRefreshToken), `AuthController` | **ใช้ต่อ** + **ปรับ** เพิ่มตรวจรายชื่ออนุญาตตอน Refresh |
-| Backend ตัวจำกัดอัตรา 2 โควตา | `Program.cs` | **ปรับ** ผูกโควตา `auth` กับ `POST /api/auth/google` แทน register/login ส่วน `refresh` ใช้ต่อ |
-| Backend error handler, log, ฐานข้อมูล, CI, compose, โปรเจกต์เทสต์ | `Middleware/`, `Data/`, `Migrations/`, `.github/`, `docker-compose.yml`, `Jod.Integration.Tests` | **ใช้ต่อ** |
-| Backend สัญญาบริการ | `IAuthService.RegisterAsync`, `IAuthService.LoginAsync` | **ถอด** เพิ่ม `SignInWithGoogleAsync` (ชื่อใหม่ต้องขอยืนยัน) |
-| Backend สมัคร/ล็อกอินด้วยรหัสผ่าน และส่วนช่วย | `AuthService`: `RegisterAsync`, `LoginAsync`, แฮชหลอก (`DummyPasswordHash`), `ValidateRegistration`, `ToCustomError`, `ToThaiMessage`, `MinPasswordLength`, `CountFailedLoginAsync`, `ResetFailedLoginsAsync` | **ถอด** |
-| Backend โมเดลคำขอ | `RegisterRequestModel`, `LoginRequestModel` | **ถอด** (เพิ่มโมเดลรับ credential ชื่อใหม่ต้องขอยืนยัน) |
-| Backend `UserViewModel.EmailConfirmed` | `UserViewModel` | **ถอด** (ทุกบัญชีผ่านการยืนยันจาก Google) |
-| Backend โหมดสมัคร | `RegistrationOptions`, `RegistrationMode`, ส่วนตรวจใน `Program.cs` | **ถอด** แทนด้วยรายชื่ออนุญาตและ `Google:ClientId` |
-| Backend ตั้งค่า Identity ฝั่งรหัสผ่าน | `Program.cs`: `Password.*`, `Lockout`, `AllowedUserNameCharacters`, `RequireUniqueEmail` | **ถอด** |
-| Backend `AddIdentityCore`/`AddEntityFrameworkStores` และแพ็กเกจ `Microsoft.AspNetCore.Identity.EntityFrameworkCore` | `Program.cs`, `Jod.Service.csproj` | **ถอด** (ผู้ใช้เลือกทางเลือก B: ไม่ใช้ Identity) |
-| **API** | `POST /api/auth/register`, `POST /api/auth/login` | **ถอด** เพิ่ม `POST /api/auth/google` |
-| API | `POST /api/auth/refresh`, `POST /api/auth/logout`, `GET /api/me` | **ใช้ต่อ** ปรับ: ตัด `emailConfirmed` ออกจากคำตอบ, refresh ตรวจรายชื่อ |
-| **Configuration** | `Lockout` และ `Registration` ใน `backend/Web.Jod/appsettings.json` และ `appsettings.Development.example.json` (ไฟล์ `appsettings.Development.json` ในเครื่องไม่ติดตาม git ผู้ใช้ลบเอง) และ `Registration:Mode` ใน `JodWebFactory` | **ถอด** |
-| Configuration | `Jwt`, `RateLimit`, `ConnectionStrings` | **ใช้ต่อ** |
-| Configuration | `Google:ClientId`, `Access:AllowedEmails` ใน `appsettings.json` และไฟล์ตัวอย่าง (ค่าสมมติ), `VITE_GOOGLE_CLIENT_ID` ใน `client/.env.example` | **เพิ่ม** (ชื่อคีย์เป็นร่าง) |
-| **Schema** คอลัมน์ Identity ที่เกี่ยวกับรหัสผ่านและล็อกบัญชี (`PasswordHash`, `SecurityStamp`, `AccessFailedCount`, `LockoutEnd`, `LockoutEnabled` ฯลฯ ใน `AspNetUsers`) | `AspNetUsers` และ migration แรก | **เปลี่ยน** ผู้ใช้เลือกทางเลือก **B** เมื่อ 2026-10-20: migration เป็นตารางผู้ใช้เรียบง่าย (หัวข้อ 7) ก่อนมีตาราง Note ต้องขออนุมัติแยกก่อนทำ migration |
-| Schema ตารางผูก Google (`AspNetUserLogins`) | migration แรก | **ถอด** แทนด้วยคอลัมน์ Google `sub` (unique) ในตารางผู้ใช้ใหม่ |
-| **Frontend** ประสาน session, ส่งคำขอพร้อมโทเคน, ตัวแปล error, ธีมมืด, router, หน้า "บัญชีของฉัน" | `refresh-coordinator`, `browser-session`, `authorized-fetch`, `api-error`, `RequireAuth`, `AppRouter`, `AccountPage`, `index.css` | **ใช้ต่อ** |
-| Frontend session provider และ service | `AuthProvider`, `AuthContext` (`login`/`register`), `auth-service.ts` (`register`/`login`) | **ปรับ** เป็น `signInWithGoogle` (ชื่อใหม่ต้องขอยืนยัน) ส่วน `refreshSession`/`logout`/`fetchCurrentUser` ใช้ต่อ |
-| Frontend หน้าเข้าสู่ระบบ | `LoginPage` | **ปรับ** เป็นปุ่ม Google |
-| Frontend ฟอร์มรหัสผ่านและหน้าสมัคร | `CredentialsForm`, `RegisterPage`, เส้นทาง `/register`, `credentials-validation.ts` (+เทสต์), ส่วนสไตล์ฟอร์มใน `auth.css` | **ถอด** |
-| Frontend ฟิลด์ `emailConfirmed` | `AuthUser` ใน `auth-session.ts`, ข้อมูลทดสอบใน `refresh-coordinator.test.ts` | **ถอด** |
-| **Tests (backend)** | `AuthApiTests` 25 เมธอด: สมัคร 6, ล็อกอิน 2, โหมดสมัครตอนเริ่มแอป 3, ล็อกบัญชี 7 | **ถอด** 18 เมธอดนี้ ส่วนที่เหลือ (ตรวจกุญแจ JWT, นโยบายต้องล็อกอิน, `GET /api/me`, log) **ปรับ** ให้สร้างผู้ใช้ผ่านตัวตรวจ Google ปลอม |
-| Tests | `RefreshTokenTests` (14), `RateLimitTests` (7), `ErrorContractTests` (ตัวช่วย `SignedInClientAsync`) ที่ใช้ endpoint สมัคร/ล็อกอินสร้างผู้ใช้ | **ปรับ** ใช้ตัวตรวจ Google ปลอมแทน |
-| Tests | `Jod.Service.Tests/RegistrationOptionsTests` | **ถอด** |
-| Tests (frontend) | `credentials-validation.test.ts` | **ถอด** |
-| Tests ใหม่ | ตามหัวข้อ 12 ข้อ 1–10 และ 18 ใช้ตัวตรวจ Google ปลอมใน `JodWebFactory` | **เพิ่ม** |
-| **เอกสาร** | `README.md`, `backend/CLAUDE.md`, `client/CLAUDE.md`, spec นี้ | **ปรับ** ให้ตรงโค้ดหลังเปลี่ยน ลบข้อความ "สถานะเปลี่ยนผ่าน" และหัวข้อ 17 นี้ |
-
-### ลำดับงานที่กระทบน้อยที่สุด (รออนุมัติ ยังไม่ลงมือ)
-
-1. push 14 commit ที่ค้างให้ CI พิสูจน์ฐานเดิมก่อน (ผู้ใช้อนุมัติและ push แล้ว 2026-10-20)
-2. **[ขั้นระหว่างพัฒนา]** Backend: ทดลอง `Google.Apis.Auth` กับ .NET 10 ก่อนอย่างอื่น แล้วเพิ่ม `GoogleOptions` + `AccessOptions` พร้อมตรวจตอนเริ่มแอป, `IGoogleIdTokenVerifier` + ตัวจริง, `SignInWithGoogleAsync` (หา/สร้างผู้ใช้จาก Google `sub`, ตรวจ `email_verified`/กฎ `hd`-Gmail/รายชื่อ), `POST /api/auth/google`, ตรวจรายชื่อตอน Refresh, ตัวตรวจ token ปลอมใน `JodWebFactory` และเทสต์ S1 ตามหัวข้อ 12 **ข้อสังเกตจากทางเลือก B:** ตารางผู้ใช้ใหม่ไม่ใช่ Identity จึงอยู่ร่วมกับโค้ดรหัสผ่านที่ใช้ `UserManager` ไม่ได้ ขั้น 2 จึงต้องรวม migration ตารางผู้ใช้และถอดโค้ดรหัสผ่านที่พึ่ง Identity ไปพร้อมกัน (ทางถอยคือ git ฐานข้อมูลพัฒนาสร้างใหม่ได้) **ต้องได้รับอนุมัติแยกก่อนทำขั้นนี้**
-3. **[ขั้นระหว่างพัฒนา]** หน้าเว็บ: ปุ่ม Google + `signInWithGoogle` ใน service และ `AuthProvider`/`AuthContext` ปรับ `LoginPage` ตัดหน้า Register
-4. ตรวจด้วยมือกับ Google จริงหนึ่งครั้ง (หัวข้อ 12 ข้อ 17) พร้อมตั้ง OAuth Client ID (OQ-13)
-5. **ถอดส่วนที่เหลือของเส้นทาง Email/Password** ตามตารางด้านบน (หน้าเว็บ `RegisterPage`/`CredentialsForm`, เทสต์เก่า, ตั้งค่า `Registration`/`Lockout` ฯลฯ ส่วนฝั่ง Backend ที่พึ่ง Identity ถูกถอดไปแล้วในขั้น 2) และต้องผ่านเกณฑ์ตรวจรับข้อ 19 ก่อนถือว่า 1a เสร็จ
-6. ปรับ `README.md` และ `CLAUDE.md` สองไฟล์ให้ตรงโค้ดจริง ลบหัวข้อ 17 นี้
-
-### สิ่งที่ยังไม่ได้ตัดสิน (ไม่ใช่ Decision)
-
-- OQ-12 ถึง OQ-15 (หัวข้อ 14) รวมถึงที่เก็บรายชื่ออนุญาต
-- ชื่อคอลัมน์ของตารางผู้ใช้ใหม่ และชื่อชนิด/คีย์อื่นนอกรายการในหัวข้อ 2 ต้องขอผู้ใช้ยืนยันก่อนตั้ง (ชื่อในหัวข้อ 2 ผู้ใช้ยืนยันแล้ว 2026-10-20)

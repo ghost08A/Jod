@@ -14,6 +14,7 @@ status: accepted
 
 - ทุก `.csproj` เปลี่ยนเป็น `net10.0` ในงาน 1a แพ็กเกจหลักของ Microsoft (EF Core, Identity, JwtBearer) ใช้รุ่นหลัก 10 CI และ image ฐานของ Docker ใช้ .NET 10
 - `backend/CLAUDE.md` ระบุเป็นข้อความชั่วคราวจนกว่า `.csproj` จะเปลี่ยนจริง
+- แพ็กเกจของ `Jod.Service` ตอนนี้: `Microsoft.EntityFrameworkCore` 10.0.13 (ปักรุ่นเอง เพราะ Npgsql provider 10.0.3 ดึงรุ่น 10.0.4 มาชนกับรุ่นของ `Microsoft.EntityFrameworkCore.Design` 10.0.13 ที่ Web.Jod ใช้), `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3, `Microsoft.IdentityModel.JsonWebTokens` 8.23.0 และ `Google.Apis.Auth` 1.77.0 (ตรวจ Google ID token ตาม ADR 0006 ดึง `Google.Apis`, `Google.Apis.Core`, `Newtonsoft.Json` 13.0.4 มาด้วย) ไม่มี ASP.NET Core Identity แล้ว
 
 ## เงื่อนไขก่อนลงมือ (ต้องตรวจก่อนเปลี่ยน `.csproj`)
 
@@ -28,5 +29,6 @@ status: accepted
 
 ## [ยังไม่ได้ทดสอบ]
 
-- ความเข้ากันได้ของ Npgsql EF provider รุ่นหลัก 10 กับ PostgreSQL 16 (ตรวจตอนงาน 1a-3)
+- ความเข้ากันได้ของ Npgsql EF provider รุ่นหลัก 10 กับ PostgreSQL 16: เทสต์เชื่อมต่อ 79 ข้อผ่านกับ PostgreSQL 16 จริงแล้วเมื่อ 2026-10-21 แต่ยังไม่ได้ตรวจกรณีละเอียดอื่น
+- `Google.Apis.Auth` 1.77.0 บน .NET 10: build ผ่านและปฏิเสธ token ผิดรูปแบบ/ลายเซ็นปลอมตามคาด ยังไม่ได้ตรวจกับ token ที่ Google เซ็นจริง
 - AWSSDK.S3 บน .NET 10 (PoC ของ SeaweedFS ทดสอบบน .NET 8 ผลยังใช้เป็นหลักฐานของที่เก็บไฟล์ แต่ต้องทดสอบ SDK ซ้ำบน .NET 10 ตอนทำฟีเจอร์ไฟล์)

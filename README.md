@@ -4,9 +4,9 @@
 
 ## สถานะปัจจุบัน (ตรวจ 2026-10-20)
 
-- **เสร็จแล้ว:** ฐานข้อมูล PostgreSQL, โครงระบบ session (Access token + Refresh token แบบหมุน + คุกกี้), หน้าเว็บส่วน session, ตัวจัดการ error/log, CI
-- **ยังไม่เสร็จ (งานที่ค้างอยู่): การเข้าสู่ระบบด้วย Google** Jod จะใช้ **Google Sign-In เป็นวิธีเข้าสู่ระบบวิธีเดียว** ([ADR 0006](docs/adr/0006-google-sign-in-and-jod-session-tokens.md)) แต่ยังไม่ได้เขียนโค้ดส่วนนี้ ตอนนี้ **ยังไม่มีทางเข้าสู่ระบบที่ใช้งานได้จริง** คู่มือนี้จึงพาไปถึงขั้น "ระบบรันขึ้นและเห็นหน้าเข้าสู่ระบบ" เท่านั้น
-- โค้ดรุ่นแรกในเครื่องยังมีระบบ email + รหัสผ่าน ซึ่งเป็น **โค้ดเก่าที่ต้องถอดออก** ไม่ใช่วิธีเข้าสู่ระบบของ Jod และคู่มือนี้ไม่สอนให้ตั้งค่าหรือใช้ ([แผนถอด](docs/specs/1a-foundation-and-account.md) หัวข้อ 17)
+- **เสร็จแล้ว:** ฐานข้อมูล PostgreSQL, ระบบ session (Access token + Refresh token แบบหมุน + คุกกี้), **การเข้าสู่ระบบด้วย Google วิธีเดียว** ([ADR 0006](docs/adr/0006-google-sign-in-and-jod-session-tokens.md)) ทั้ง backend และหน้าเว็บ, กลุ่มปิดด้วยรายชื่ออีเมลที่อนุญาต, ตัวจัดการ error/log, CI
+- **ตรวจด้วยเทสต์อัตโนมัติแล้ว แต่ยังไม่ได้ตรวจกับ Google จริง:** เทสต์ใช้ตัวตรวจ token ปลอม การตรวจ token จริงที่ Google เซ็นและการกดปุ่ม Google จริงบนเดสก์ท็อปและมือถือ ยังรอทำด้วยมือหลังมี OAuth Client ID (ดูหัวข้อ "เข้าสู่ระบบด้วย Google")
+- Jod ไม่มีรหัสผ่าน ไม่มีหน้าสมัครสมาชิก และไม่ส่งอีเมล
 - Note, Editor, Tree, AI ยังไม่ได้ทำ
 
 ## สิ่งที่ต้องติดตั้งก่อน
@@ -51,7 +51,7 @@ docker compose up -d --wait
 cp backend/Web.Jod/appsettings.Development.example.json backend/Web.Jod/appsettings.Development.json
 ```
 
-แล้วเปิดแก้ 2 ค่า
+แล้วเปิดแก้ 4 ค่า (ค่าที่ 3 และ 4 อธิบายในหัวข้อ "เข้าสู่ระบบด้วย Google" ข้างล่าง)
 
 1. `ConnectionStrings:Default` ใส่รหัสผ่านและพอร์ตให้ตรงกับที่ตั้งใน `.env` ข้อ 1
 2. `Jwt:SigningKey` ใส่ข้อความสุ่มยาวอย่างน้อย 32 ตัวอักษร (ใช้เซ็น Access token ที่ Jod ออกเอง) สร้างได้ด้วยคำสั่งใดคำสั่งหนึ่ง
@@ -66,9 +66,10 @@ cp backend/Web.Jod/appsettings.Development.example.json backend/Web.Jod/appsetti
    $bytes = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [Convert]::ToBase64String($bytes)
    ```
 
-ถ้าไม่แก้ `Jwt:SigningKey` หรือยังเป็นค่า `REPLACE_WITH...` backend จะไม่ยอมเริ่มทำงาน (ตั้งใจให้เป็นแบบนั้น)
+3. `Google:ClientId` OAuth Client ID ของ Google (ยังไม่มีให้ใส่ค่าชั่วคราวที่ไม่ขึ้นต้น `REPLACE_WITH` เช่น `dev-placeholder.apps.googleusercontent.com` backend จะเริ่มได้ แต่ล็อกอินจริงยังไม่ได้)
+4. `Access:AllowedEmails` รายชื่ออีเมล Google ที่อนุญาตให้ใช้ Jod
 
-**ในไฟล์ที่คัดลอกมีบล็อก `Registration` ให้ลบทิ้ง** บล็อกนี้เป็นของระบบสมัครสมาชิกแบบเก่าที่กำลังถูกถอด ไม่ต้องตั้งหรือแก้ค่าใดๆ (ไม่มีบล็อกนี้ backend ก็เริ่มได้) ส่วนบล็อก `Gemini` ยังไม่ใช้ในตอนนี้ ปล่อยไว้ได้
+ถ้าไม่แก้ `Jwt:SigningKey` หรือยังเป็นค่า `REPLACE_WITH...` backend จะไม่ยอมเริ่มทำงาน เช่นเดียวกับ `Google:ClientId` ที่ว่างหรือยังเป็นค่าตัวอย่าง (ตั้งใจให้เป็นแบบนั้น) ส่วนบล็อก `Gemini` ยังไม่ใช้ในตอนนี้ ปล่อยไว้ได้
 
 ### 4. สร้างตารางในฐานข้อมูล
 
@@ -80,6 +81,13 @@ dotnet ef database update --project backend/Jod.Service --startup-project backen
 
 คำสั่งนี้สั่งซ้ำกี่ครั้งก็ได้ ไม่พัง
 
+**ถ้าเคยรัน Jod รุ่นแรกที่ใช้อีเมล + รหัสผ่านไว้แล้ว** ตารางในฐานข้อมูลเป็นโครงเก่า (ตาราง `AspNet...`) ให้ลบฐานข้อมูลพัฒนาแล้วสร้างใหม่ก่อน (ข้อมูลในนั้นเป็นบัญชีทดลองทั้งหมดจะหาย)
+
+```bash
+dotnet ef database drop --force --project backend/Jod.Service --startup-project backend/Web.Jod
+dotnet ef database update --project backend/Jod.Service --startup-project backend/Web.Jod
+```
+
 ### 5. เปิด backend
 
 ```bash
@@ -89,6 +97,8 @@ dotnet run --project backend/Web.Jod --launch-profile http
 backend อยู่ที่ <http://localhost:5133> (เปิดหน้า Swagger ดูรายการ API ได้ที่ <http://localhost:5133/swagger>) ปล่อย terminal นี้ไว้
 
 ### 6. เปิดหน้าเว็บ (เปิด terminal ใหม่)
+
+ตั้ง Client ID ให้หน้าเว็บก่อน (ข้อ 4 ของหัวข้อ "เข้าสู่ระบบด้วย Google") แล้วค่อยรัน
 
 ```bash
 cd client
@@ -100,19 +110,17 @@ npm run dev
 
 ### 7. ตรวจว่าระบบรันขึ้น
 
-เปิดหน้าเว็บ จะถูกพาไปหน้าเข้าสู่ระบบ นั่นแปลว่าฐานข้อมูล backend และหน้าเว็บทำงานต่อกันได้ ฟอร์มอีเมล/รหัสผ่านที่เห็นเป็น **ของโค้ดเก่าที่ต้องถอด ไม่ต้องสมัครหรือกรอก** ตอนนี้ยังเข้าสู่ระบบไม่ได้จนกว่าการเข้าสู่ระบบด้วย Google จะถูก implement (ดูหัวข้อถัดไป)
+เปิดหน้าเว็บ จะถูกพาไปหน้าเข้าสู่ระบบที่มีปุ่ม "Sign in with Google" แปลว่าฐานข้อมูล backend และหน้าเว็บทำงานต่อกันได้ ถ้ายังใช้ Client ID ชั่วคราว ปุ่มจะขึ้นแต่กดเข้าจริงไม่ได้ ต้องใช้ Client ID จริงตามหัวข้อถัดไป
 
-## เข้าสู่ระบบด้วย Google (งานที่ยังไม่เสร็จ)
+## เข้าสู่ระบบด้วย Google
 
-**หัวข้อนี้เป็นแผนตามที่ตัดสินใจไว้ใน [ADR 0006](docs/adr/0006-google-sign-in-and-jod-session-tokens.md) และ [spec 1a](docs/specs/1a-foundation-and-account.md) ยังทำตามไม่ได้ในโค้ดตอนนี้** ชื่อค่าตั้งค่าด้านล่างเป็นร่างและอาจเปลี่ยนตอน implement หัวข้อนี้จะถูกเขียนใหม่เป็นขั้นตอนใช้งานจริงเมื่อโค้ดเสร็จ
-
-สิ่งที่จะต้องเตรียมเมื่อถึงเวลา
+Jod ใช้ Google Sign-In วิธีเดียว ([ADR 0006](docs/adr/0006-google-sign-in-and-jod-session-tokens.md), [spec 1a](docs/specs/1a-foundation-and-account.md)) หน้าเว็บส่ง Google ID token ให้ backend ตรวจเอง (ลายเซ็น, `aud`, `iss`, `exp`, `email_verified`) แล้ว Jod ออก token ของตัวเอง สิ่งที่ต้องเตรียม
 
 1. **OAuth Client ID ชนิด Web application ใน Google Cloud Console** ใครเป็นเจ้าของโปรเจกต์ Google Cloud และสถานะของหน้าจอขอความยินยอม (consent screen) ยังเป็นคำถามที่เปิดอยู่ (OQ-13) และเงื่อนไขของโหมดทดสอบยังไม่ได้ตรวจกับเอกสาร Google
 2. **Authorized JavaScript origins** ใส่ที่อยู่ที่ใช้เปิดหน้าเว็บในเบราว์เซอร์จริง ตอนพัฒนาคือที่อยู่ของ Vite (`http://localhost:5173`) เงื่อนไขของที่อยู่ (เช่น ต้องเป็น HTTPS นอกเครื่องตัวเองหรือไม่) ให้ตรวจกับเอกสาร Google ก่อนตั้งค่า
 3. **ไม่ต้องใช้ Client Secret** เพราะหน้าเว็บส่ง Google ID token ให้ backend ตรวจเอง
-4. ใส่ Client ID (ไม่ใช่ความลับ) ที่ backend ค่า `Google:ClientId` ในไฟล์ `appsettings.Development.json` และที่หน้าเว็บ `VITE_GOOGLE_CLIENT_ID` ในไฟล์ `client/.env` (ชื่อเป็นร่าง) ถ้าไม่ตั้งหรือยังเป็นค่าสมมติ backend จะไม่เริ่ม
-5. **รายชื่ออีเมลที่อนุญาต** ค่า `Access:AllowedEmails` (ชื่อเป็นร่าง) ใส่อีเมล Google ของสมาชิกทุกคนที่จะใช้ Jod Jod เป็นกลุ่มปิด **รายชื่อว่าง = ไม่มีใครเข้าได้** ไม่มีโหมดเปิดสมัครสาธารณะ ตามร่างปัจจุบันรับเฉพาะ Gmail และบัญชี Google Workspace (ตัดสินแล้วสำหรับ v1: บัญชีอื่นเข้าไม่ได้) และการเอาอีเมลออกจากรายชื่อทำให้คนนั้นเสียสิทธิ์ภายในราว 15 นาที
+4. ใส่ Client ID (ไม่ใช่ความลับ) สองที่ให้ตรงกัน: backend ค่า `Google:ClientId` ในไฟล์ `backend/Web.Jod/appsettings.Development.json` และหน้าเว็บ `VITE_GOOGLE_CLIENT_ID` ในไฟล์ `client/.env.local` (ไฟล์นี้อยู่นอก git คัดลอกรูปแบบจาก `client/.env.example`) ถ้าฝั่ง backend ไม่ตั้งหรือยังเป็นค่าตัวอย่าง backend จะไม่เริ่ม ถ้าฝั่งหน้าเว็บไม่ตั้ง หน้าเข้าสู่ระบบจะแจ้งว่ายังไม่ได้ตั้งค่า
+5. **รายชื่ออีเมลที่อนุญาต** ค่า `Access:AllowedEmails` เป็นรายการอีเมล Google ของสมาชิกทุกคนที่จะใช้ Jod Jod เป็นกลุ่มปิด **รายชื่อว่าง = ไม่มีใครเข้าได้** (backend เริ่มได้แต่ขึ้น log เตือน) ไม่มีโหมดเปิดสมัครสาธารณะ รับเฉพาะ Gmail และบัญชี Google Workspace (บัญชี Google ที่ใช้อีเมลผู้ให้บริการอื่นเข้าไม่ได้ ตัดสินแล้วสำหรับ v1) อีเมลเทียบโดยไม่สนตัวพิมพ์เล็กใหญ่ การเอาอีเมลออกจากรายชื่อทำให้คนนั้นเสียสิทธิ์ภายในราว 15 นาที (ครั้งถัดไปที่ต่ออายุ session)
 
 Jod ไม่ส่งอีเมลหาใครและไม่เก็บรหัสผ่านของใคร อีเมลใช้เป็นข้อมูลเท่านั้น (เทียบกับรายชื่อที่อนุญาต แสดงในหน้าบัญชี และเงื่อนไข Share Link แบบจำกัดด้วย email ในอนาคต)
 
@@ -165,6 +173,11 @@ docker compose down
 | `port is already allocated` ตอนเปิดฐานข้อมูล | พอร์ต 5432 ถูกใช้อยู่ แก้ `POSTGRES_PORT` ใน `.env` แล้วแก้พอร์ตใน `ConnectionStrings:Default` ให้ตรงกัน |
 | backend ไม่เริ่ม ขึ้นข้อความเกี่ยวกับ `Jwt:SigningKey` | ยังไม่ได้ตั้งกุญแจ สั้นกว่า 32 ไบต์ หรือยังเป็นค่าตัวอย่าง (ข้อ 3) |
 | backend ไม่เริ่ม ขึ้น `ConnectionStrings:Default is not set` | ยังไม่ได้สร้าง `appsettings.Development.json` (ข้อ 3) หรือรันนอกโหมด Development |
+| backend ไม่เริ่ม ขึ้นข้อความเกี่ยวกับ `Google:ClientId` หรือ `Access:AllowedEmails` | `Google:ClientId` ว่างหรือยังเป็นค่าตัวอย่าง หรือมีรายการในรายชื่อที่ไม่ใช่อีเมล (ข้อ 3) |
+| backend ขึ้นข้อผิดพลาดเกี่ยวกับตารางหรือคอลัมน์ที่ไม่มี | ฐานข้อมูลยังเป็นโครงของรุ่นแรก ลบแล้วสร้างใหม่ตามข้อ 4 |
+| หน้าเข้าสู่ระบบแจ้ง "ยังไม่ได้ตั้งค่า VITE_GOOGLE_CLIENT_ID" | ยังไม่ได้สร้าง `client/.env.local` หรือเปิด `npm run dev` ไว้ก่อนสร้าง ให้ปิดแล้วเปิดใหม่ |
+| ล็อกอิน Google สำเร็จแต่ขึ้น "ยังไม่ได้รับอนุญาตให้ใช้ Jod" (403) | อีเมลของบัญชีนั้นไม่อยู่ใน `Access:AllowedEmails` ให้เพิ่มแล้วเปิด backend ใหม่ |
+| ขึ้น "ตรวจสอบกับ Google ไม่ได้ชั่วคราว" (503) | backend ติดต่อ Google เพื่อดึงกุญแจตรวจ token ไม่ได้ (ไม่มีอินเทอร์เน็ตหรือ Google ขัดข้อง) ลองใหม่ |
 | หน้าเว็บขึ้น "เชื่อมต่อระบบไม่ได้" | backend ยังไม่เปิด (ข้อ 5) หรือเปิดคนละพอร์ต หน้าเว็บส่งคำขอไปที่ `localhost:5133` |
 | ขึ้น "ส่งคำขอถี่เกินไป" (429) | ระบบจำกัดการเข้าสู่ระบบ 10 ครั้งต่อนาทีต่อเครื่อง (ต่ออายุเงียบ 60 ครั้ง) รอ 1 นาทีแล้วลองใหม่ |
 | เทสต์ backend ล้มด้วยข้อความ `Set JOD_TEST_POSTGRES` | ยังไม่ได้ตั้งตัวแปรตามหัวข้อรันเทสต์ |

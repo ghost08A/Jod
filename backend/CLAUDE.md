@@ -10,10 +10,9 @@ This file provides guidance to AI coding agents (Claude Code, Codex, etc.) when 
 - Swagger UI via Swashbuckle.AspNetCore (Development only)
 - PostgreSQL 16 through EF Core (Npgsql provider, ADR 0004). `JodDbContext` and the migrations live in `Jod.Service`
 - Authentication: **Google Sign-In only** (ADR 0006). The backend verifies the Google ID token itself (signature, `aud`, `iss`, `exp`, `email_verified`), identifies the user by the Google `sub` and never trusts identity data sent by the frontend. Jod then issues its own JWT access token (15 minutes, held in memory by the client) and a rotating refresh token in an HttpOnly cookie. Only emails on the allowed list may sign in (closed group, default deny). There are no passwords, no email verification or reset links, and Jod sends no email
-- **Target vs current code (checked 2026-10-20).** Target: Google Sign-In is the only way in. Current code: Google Sign-In is **not implemented yet**. The branch still holds the first build's email + password path, which is old code **to be removed, not kept alongside Google**: `IAuthService`/`AuthService` `RegisterAsync` and `LoginAsync`, `RegisterRequestModel`, `LoginRequestModel`, `POST /api/auth/register` and `/login`, password lockout (`CountFailedLoginAsync`, `ResetFailedLoginsAsync`, the `Lockout` settings), `RegistrationOptions`/`RegistrationMode`/`Registration:Mode`, the Identity password options in `Program.cs`, and `UserViewModel.EmailConfirmed`. Never extend, copy or revive them, and write no new code or tests on top of them. The plan for removing them is `docs/specs/1a-foundation-and-account.md` section 17
+- **Current code (checked 2026-10-21):** Google Sign-In is the only way in and it is implemented: `POST /api/auth/google` (`AuthController`), `IAuthService.SignInWithGoogleAsync`, `IGoogleIdTokenVerifier` (real class `GoogleIdTokenVerifier` wraps `Google.Apis.Auth`), `GoogleOptions` (`Google:ClientId`) and `AccessOptions` (`Access:AllowedEmails`). The users table is the simple `Users` table (`AppUser`: `Id`, `GoogleSubject` unique, `Email`, `CreatedAt`), not ASP.NET Core Identity. **Checked only with a fake verifier in tests**: a token really signed by Google has not been verified against the real class yet (manual check, spec 1a acceptance criterion 17)
 - Never bring back passwords, email verification or reset links, email sending, or an "open registration" mode. Jod has none of them (ADR 0006). Email is used only as data: the allowed list, the address shown to the user, and the Share Link rule
-- **Not decided yet:** whether the Identity password columns (`PasswordHash`, `SecurityStamp`, `AccessFailedCount`, `LockoutEnd`, `LockoutEnabled` …) are dropped by a migration (spec 1a section 17, option B) or left unused (option A). Do not create that migration without the user's approval. Either way no code may read or write them
-- Kept from the first build and still valid: JWT access token issue and validation, rotating refresh token, the `jod_refresh` cookie, the `X-Requested-With` check, the fallback "sign-in required" policy, the rate limiter, the error handler
+- Session design: JWT access token issue and validation, rotating refresh token, the `jod_refresh` cookie, the `X-Requested-With` check, the fallback "sign-in required" policy, the rate limiter, the error handler
 - Every endpoint needs sign-in unless it carries `[AllowAnonymous]` (fallback authorization policy), so a new endpoint is protected without anyone remembering to protect it
 - Errors: one central middleware (`Web.Jod/Middleware`) answers every failure as `application/problem+json` with a `reference` that is also in the log
 
@@ -62,12 +61,11 @@ No circular dependencies between projects.
 
 ### Request Lifecycle
 
-Target flow (not implemented yet): `POST /api/auth/google` → `ApiExceptionHandler` (outermost middleware) → rate limiter → `AuthController` (`Web.Jod`)
+Flow of `POST /api/auth/google`: → `ApiExceptionHandler` (outermost middleware) → rate limiter → `AuthController` (`Web.Jod`)
 binds the request model (the Google credential) → calls `IAuthService` via DI → `AuthService` (`Jod.Service`) has the ID token
 verified through `IGoogleIdTokenVerifier`, checks the allowed list, finds or creates the user, issues tokens, uses `JodDbContext`
 → returns `AuthSessionModel` → the controller sets the refresh cookie and returns only `AuthResultViewModel` as JSON.
 A `CustomError` thrown anywhere below is turned into a 4xx problem by the middleware.
-(Current code only has the old `POST /api/auth/login` with a password, which is being removed. Do not use it as a pattern.)
 
 ### Rules for AI Agents (Backend)
 
@@ -91,22 +89,22 @@ Repo root also holds `docker-compose.yml` (PostgreSQL for development), `.env.ex
 backend/
 ├── Jod.slnx
 ├── Jod.Domain/
-│   ├── Enums/                 # ErrorKind (what a CustomError means: validation, unauthorized, forbidden, conflict)
-│   ├── Interfaces/            # IAuthService
-│   ├── Models/                # AuthSessionModel (between layers only)
-│   ├── RequestModels/         # RegisterRequestModel, LoginRequestModel (first build, to be removed; target: one model for the Google credential)
+│   ├── Enums/                 # ErrorKind (what a CustomError means: validation, unauthorized, forbidden, conflict, unavailable)
+│   ├── Interfaces/            # IAuthService, IGoogleIdTokenVerifier
+│   ├── Models/                # AuthSessionModel, GoogleIdentity (between layers only)
+│   ├── RequestModels/         # GoogleSignInRequestModel (only the Google credential)
 │   ├── ViewModels/            # AuthResultViewModel, UserViewModel
 │   └── CustomError.cs         # business error: Messages + Kind
 ├── Jod.Service/
-│   ├── Data/                  # JodDbContext, AppUser (Identity user; password columns undecided), RefreshToken
-│   ├── ImplementServices/     # AuthService (refresh/logout/token parts kept; the password path in it is to be removed)
+│   ├── Data/                  # JodDbContext, AppUser (Google sub + email), RefreshToken
+│   ├── ImplementServices/     # AuthService, GoogleIdTokenVerifier (the real Google check)
 │   ├── Migrations/            # EF Core migrations (generated, see Database rules)
-│   ├── Options/               # JwtOptions (RegistrationOptions/RegistrationMode are first-build code to be removed; target adds options for the Google client id and the allowed list)
+│   ├── Options/               # JwtOptions, GoogleOptions (client id), AccessOptions (allowed emails)
 │   └── Helper/
 ├── Jod.Service.Tests/         # unit tests: xUnit + Moq, pure logic, no database
 ├── Jod.Integration.Tests/     # S1 seam: the real app + a real PostgreSQL, called over HTTP
 └── Web.Jod/
-    ├── Controllers/           # AuthController (refresh, logout, me are kept; register and login are old and to be removed; target adds google)
+    ├── Controllers/           # AuthController (google, refresh, logout, me)
     ├── Extensions/            # ClaimsPrincipalExtensions (GetUserId)
     ├── Middleware/            # ApiExceptionHandler, ErrorResponses
     ├── Properties/launchSettings.json
@@ -184,9 +182,9 @@ ex.ThrowIfAny();
 - DO NOT change route names, request models, or response models unless required
 - Return meaningful error messages without exposing sensitive internal details
 - Never put a token (Google ID token, access token, refresh token), an email or the contents of a request into a response body, a log line or an exception message. The refresh token travels only in the `jod_refresh` cookie
-- Endpoints that sign in, renew or end a session (target: `/api/auth/google`, `/api/auth/refresh`, `/api/auth/logout`) require the header `X-Requested-With: jod`, so a page on another site cannot trigger them with the cookie. Today only refresh and logout enforce it, because the google endpoint does not exist yet
+- Endpoints that sign in, renew or end a session (`/api/auth/google`, `/api/auth/refresh`, `/api/auth/logout`) require the header `X-Requested-With: jod`, so a page on another site cannot trigger them with the cookie
 - Never read a name, email or Google id from the request body to decide who the user is. Identity comes only from the verified ID token (Google `sub`); the email is information that is refreshed at every sign-in, never a key
-- Rate limits are per IP address in two buckets: `auth` (sign-in endpoint, 10 a minute) and `refresh` (60 a minute). Add `[EnableRateLimiting("...")]` to a new sign-in style endpoint. Today the `auth` bucket is attached to the old register and login endpoints; the target is `POST /api/auth/google`
+- Rate limits are per IP address in two buckets: `auth` (sign-in endpoint, 10 a minute) and `refresh` (60 a minute). Add `[EnableRateLimiting("...")]` to a new sign-in style endpoint. The `auth` bucket is attached to `POST /api/auth/google`
 
 ### Database / EF Core Rules
 
@@ -196,7 +194,7 @@ ex.ThrowIfAny();
 - Use `AsNoTracking()` for read-only queries
 - Avoid N+1 queries; use `Include()` only when necessary
 - Never access `DbContext` from a Controller — only from `Jod.Service`
-- A value that many requests change at the same moment (a counter, a "used" flag such as the refresh token claim) is changed with one conditional `ExecuteUpdateAsync`, not read, changed and saved back. Lesson from the first build's password lockout (being removed): 40 parallel wrong passwords counted as 1 or 2 with Identity's own read-modify-write counter
+- A value that many requests change at the same moment (a counter, a "used" flag such as the refresh token claim) is changed with one conditional `ExecuteUpdateAsync`, not read, changed and saved back. Lesson from the first build's password lockout (since removed): 40 parallel wrong passwords counted as 1 or 2 with a read-modify-write counter
 - A time that matters in a test (token expiry) is read from the injected `TimeProvider`, or moved in the database by the test. JwtBearer reads the real clock
 
 ### Editor Config
@@ -269,7 +267,7 @@ Before marking a task complete:
 - Use XUnit for all unit tests and Moq for mock dependencies (`Jod.Service.Tests/`). Keep these for pure logic that needs no database
 - Features are tested through the S1 seam in `Jod.Integration.Tests/`: `JodWebFactory` starts the real app against a throwaway PostgreSQL database (migrated, dropped afterwards) and the test calls the endpoint over HTTP. Prefer this over testing a service in isolation
 - The integration tests need a PostgreSQL server they may create databases on. Set `JOD_TEST_POSTGRES` to a connection string for it (database `postgres`); without it the tests fail with a clear message instead of being skipped. CI sets it for its own service container
-- The factory runs the app in the `Test` environment with a test-only signing key. Tests cannot call Google, so the target is that the factory replaces `IGoogleIdTokenVerifier` with a fake that turns a test credential into claims (not implemented yet). **Current state:** the existing tests still create their signed-in user through the old register endpoint with `Registration:Mode = Open` in the factory settings. That is a leftover of the first build that disappears with the password path (spec 1a section 17); do not copy it into new tests. The factory also adds test-only controllers (`TestErrorController`, `TestProbeController`) so errors and protected-by-default endpoints can be provoked
+- The factory runs the app in the `Test` environment with a test-only signing key. Tests cannot call Google, so the factory replaces `IGoogleIdTokenVerifier` with `FakeGoogleIdTokenVerifier`, which turns a test credential (built by `TestGoogle`) into the claims of a verified token. The factory also puts a pool of 1000 test emails (`TestGoogle.NewEmail()`) on the allowed list; a test that needs another list changes `IOptions<AccessOptions>` or uses `PostConfigure` in `WithWebHostBuilder`. The factory also adds test-only controllers (`TestErrorController`, `TestProbeController`) so errors and protected-by-default endpoints can be provoked
 - Every test that checks logging must scan `JodWebFactory.LogEntries`, which holds each log line and exception the app wrote
 - A test that only passes because the code is wrong is worse than no test: when you add a check, break the code on purpose once and see the test fail
 
