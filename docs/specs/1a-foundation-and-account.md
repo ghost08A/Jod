@@ -17,7 +17,7 @@
 - Vite proxy `/api` ไป `http://localhost:5133` (หน้าเว็บกับ API เป็นแหล่งเดียวกันตอนพัฒนา) Vitest ตั้ง `environment: 'node'` ทดสอบตรรกะล้วนได้ ทดสอบ component ใน DOM ไม่ได้ (ยังไม่มี jsdom)
 - .NET 8 หมดซัพพอร์ต 2026-11-10 ส่วน .NET 10 (LTS) ถึง 2028-11-14 จึงมี ADR 0010
 - Web Locks API ใช้ได้ทั่วไปตั้งแต่ มี.ค. 2022 แต่เฉพาะบริบทที่ปลอดภัย (HTTPS หรือ localhost) (MDN)
-- `Google.Apis.Auth` รุ่น 1.77.0 (Apache-2.0) มีชุดไบนารีสำหรับ net6.0 และ netstandard2.0 ตามข้อมูล NuGet **[ยังไม่ได้ตรวจ]** ว่าใช้กับ .NET 10 ได้จริง
+- `Google.Apis.Auth` รุ่น 1.77.0 (Apache-2.0) มีชุดไบนารีสำหรับ net6.0 และ netstandard2.0 ตามข้อมูล NuGet ผู้ใช้เลือกใช้เมื่อ 2026-10-20 **[ยังไม่ได้ตรวจ]** ว่าใช้กับ .NET 10 ได้จริง ต้องทดลองเป็นอย่างแรกในขั้น 2
 
 ## 1. ขอบเขต
 
@@ -135,11 +135,10 @@ email **ไม่ใช่ตัวระบุบัญชี** (ใช้ Goog
 
 | ตาราง | ฟิลด์สำคัญ | หมายเหตุ |
 |---|---|---|
-| ผู้ใช้ (`AppUser`, ตาราง Identity เดิม) | รหัส (Guid), อีเมล (ค่าล่าสุดจาก token), วันที่สร้าง | ตัวระบุตัวตนไม่อยู่ในแถวนี้ แต่อยู่ในตารางผูก Google ข้างล่าง |
-| การผูก Google (ตาราง Identity เดิม `AspNetUserLogins`) | ผู้ให้บริการ = `Google`, รหัสผู้ใช้ฝั่ง Google = `sub`, รหัสผู้ใช้ใน Jod | คีย์หลักคือ (ผู้ให้บริการ, `sub`) จึงไม่มีทางสร้างผู้ใช้ซ้ำสำหรับ `sub` เดียวกัน ตารางนี้มีอยู่แล้วใน migration แรก ไม่ต้องเปลี่ยน schema |
+| ผู้ใช้ (`AppUser`, ตารางเรียบง่ายใหม่ ไม่ใช้ ASP.NET Core Identity) | รหัส (Guid), Google `sub` (ไม่ซ้ำ มี unique index), อีเมล (ค่าล่าสุดจาก token), วันที่สร้าง | ผู้ใช้ตัดสินเลือกทางเลือก B เมื่อ 2026-10-20 ไม่มีคอลัมน์รหัสผ่าน/ล็อกบัญชี ชื่อคอลัมน์เป็นร่าง ต้องขอยืนยันก่อนทำ migration |
 | Refresh token (`RefreshToken`) | รหัส, รหัสผู้ใช้, รหัสชุด (family), ค่าแฮช SHA-256 ของโทเคนสุ่ม 256 บิต, สร้างเมื่อ, หมดอายุเมื่อ, ถูกใช้แล้วเมื่อ, เพิกถอนเมื่อ, ถูกแทนที่โดย | ไม่เก็บโทเคนจริง (เหมือนเดิม) |
 
-- คอลัมน์ของ Identity ที่เกี่ยวกับรหัสผ่านและล็อกบัญชี (`PasswordHash`, `SecurityStamp`, `AccessFailedCount`, `LockoutEnd`, `LockoutEnabled` ฯลฯ) หมดความจำเป็น ตรวจแล้วว่าใช้เฉพาะในเส้นทางสมัคร/ล็อกอินเดิมและเทสต์ ไม่มีฟีเจอร์อื่นใช้ (ยังไม่มี Note/Share) จะลบหรือคงไว้ให้ตัดสินในหัวข้อ 17 (ทางเลือก A/B)
+- ตาราง Identity เดิม (`AspNet*` รวม `PasswordHash`, `SecurityStamp`, `AccessFailedCount`, `LockoutEnd` และ `AspNetUserLogins`) ถูกแทนที่ด้วยตารางผู้ใช้ข้างบน ตรวจแล้วว่าไม่มีฟีเจอร์อื่นใช้ (ยังไม่มี Note/Share) migration ทำตอนขั้น 5 ของหัวข้อ 17 ต้องขออนุมัติแยกก่อนทำ และต้องทำก่อนมีตาราง Note
 - กติกาการใช้ Refresh token ต้องเป็นขั้นตอนเดียวในฐานข้อมูล: อัปเดตแบบมีเงื่อนไข "ยังไม่ถูกใช้" แล้วดูว่ากระทบ 1 แถวหรือไม่ ถ้าไม่ (ถูกใช้ไปแล้ว) ถือว่าใช้ซ้ำ → เพิกถอนทั้งชุด คำขอต่ออายุพร้อมกันสองคำขอด้วยโทเคนใบเดียวกัน หนึ่งสำเร็จ อีกหนึ่ง 401 และทั้งชุดถูกเพิกถอน (เหมือนเดิม)
 - ยังไม่มีงานล้างโทเคนหมดอายุ (เลื่อนไปก่อน Production) ตาราง Note ยังไม่สร้างใน 1a ความเป็นเจ้าของของ Note ใช้ `OwnerId` (Guid) ใน 1b
 - การสร้าง/แก้ schema ในงานนี้ทำได้เพราะ to-spec นี้เป็นคำขอที่ชัดเจนตามกฎใน `backend/CLAUDE.md` migration ใช้ EF Core เก็บใน `Jod.Service`
@@ -179,7 +178,7 @@ email **ไม่ใช่ตัวระบุบัญชี** (ใช้ Goog
 | `/api/auth/google` ไม่มี body หรือไม่มี credential | 400 | ข้อมูลที่ส่งมาไม่ถูกต้อง | |
 | ไม่มีหัวข้อ `X-Requested-With: jod` (google/refresh/logout) | 403 | คำขอไม่ถูกต้อง | |
 | ID token ลายเซ็น/`aud`/`iss`/`exp` ผิด หรือรูปแบบผิด | 401 | เข้าสู่ระบบด้วย Google ไม่สำเร็จ ลองอีกครั้ง | ไม่บอกเหตุผลละเอียด log เก็บชนิดความผิด ไม่เก็บ token |
-| `email_verified` เป็นเท็จ หรือไม่ใช่ Gmail/ไม่มี `hd` (ร่าง OQ-11) | 401 | บัญชี Google นี้ใช้เข้า Jod ไม่ได้ (อีเมลยังไม่ได้รับการยืนยันจาก Google หรือไม่ใช่ Gmail/บัญชีองค์กร) | |
+| `email_verified` เป็นเท็จ หรือไม่ใช่ Gmail/ไม่มี `hd` (OQ-11 ตัดสินแล้ว) | 401 | บัญชี Google นี้ใช้เข้า Jod ไม่ได้ (อีเมลยังไม่ได้รับการยืนยันจาก Google หรือไม่ใช่ Gmail/บัญชีองค์กร) | |
 | token ถูกต้องแต่อีเมลไม่อยู่ในรายชื่อ | 403 | บัญชี Google นี้ยังไม่ได้รับอนุญาตให้ใช้ Jod ติดต่อผู้ดูแล | รายชื่อว่าง = ได้ข้อความนี้ทุกคน |
 | ติดต่อ Google เพื่อดึงกุญแจตรวจลายเซ็นไม่ได้ | 503 (หรือ 500 ทั่วไป ตัดสินตอนลงมือ) | ตรวจสอบกับ Google ไม่ได้ชั่วคราว ลองอีกครั้ง | **ห้ามตอบ 401** เพราะไม่ใช่ความผิดของผู้ใช้ และห้ามให้หน้าเว็บมองเป็น "ออกจากระบบ" ต้องมีชนิด error ใหม่หรือใช้ 500 |
 | เกินโควตาเข้าสู่ระบบ (10/นาที/IP) หรือต่ออายุ (60/นาที/IP) | 429 | ส่งคำขอถี่เกินไป กรุณารอสักครู่แล้วลองใหม่ | |
@@ -192,10 +191,10 @@ email **ไม่ใช่ตัวระบุบัญชี** (ใช้ Goog
 ## 10. Architecture ของ 1a (ใช้โครงเดิม Web → Service → Domain)
 
 - **Web.Jod:** `AuthController` (ล็อกอินด้วย Google, ต่ออายุ, ออก, me), ตั้ง JWT bearer + นโยบายต้องล็อกอินเป็นค่าเริ่มต้น (`[AllowAnonymous]` เฉพาะ endpoint ที่ระบุ), ตัวจัดการข้อผิดพลาดที่สร้าง `reference`, ตัวจำกัดอัตรา 2 โควตา, ตรวจ `Google:ClientId` และรายชื่ออนุญาตตอนเริ่มแอป
-- **Jod.Service:** `JodDbContext`, `AuthService` (ตรวจ token ผ่าน `IGoogleIdTokenVerifier`, ตรวจรายชื่อ, หา/สร้างผู้ใช้จากการผูก Google, ออก/หมุน/เพิกถอนโทเคน), ตัวตรวจ ID token จริง (ใช้ไลบรารีที่ยังไม่ได้ตัดสิน ดูข้างล่าง), การตั้งค่าแบบ Options, migrations, `AppUser`
+- **Jod.Service:** `JodDbContext`, `AuthService` (ตรวจ token ผ่าน `IGoogleIdTokenVerifier`, ตรวจรายชื่อ, หา/สร้างผู้ใช้จากการผูก Google, ออก/หมุน/เพิกถอนโทเคน), ตัวตรวจ ID token จริง (ใช้ `Google.Apis.Auth` ดูข้างล่าง), การตั้งค่าแบบ Options, migrations, `AppUser`
 - **Jod.Domain:** `IAuthService`, `IGoogleIdTokenVerifier`, `GoogleSignInRequestModel`, `GoogleIdentity`, `AuthResultViewModel`, `UserViewModel`, `AuthSessionModel`, `CustomError`/`ErrorKind`
 - **ทำไม `IGoogleIdTokenVerifier` เป็น interface:** เป็นการเชื่อมต่อภายนอก (เครือข่ายไปหากุญแจของ Google) ตามกฎ `backend/CLAUDE.md` ว่าการเชื่อมต่อภายนอกอยู่ใน Service และเทสต์ต้องแทนด้วยตัวปลอมได้ เพราะเทสต์อัตโนมัติเรียก Google จริงไม่ได้
-- **ตัวตรวจ token (ต้องเลือก):** (ก) ไลบรารีทางการ `Google.Apis.Auth` ลดงานเขียนเอง เสียหนึ่ง dependency **[ยังไม่ได้ตรวจ]** กับ .NET 10 (ข) ใช้ไลบรารีตรวจ JWT ที่มีอยู่แล้วในโปรเจกต์ (`Microsoft.IdentityModel`) กับกุญแจของ Google ไม่เพิ่ม dependency แต่ต้องเขียนและทดสอบการแคช/หมุนกุญแจเอง
+- **ตัวตรวจ token (ผู้ใช้เลือก 2026-10-20):** ไลบรารีทางการ `Google.Apis.Auth` ลดงานเขียนเอง เสียหนึ่ง dependency **[ยังไม่ได้ตรวจ]** กับ .NET 10 ถ้าใช้ไม่ได้ให้รายงานผู้ใช้ก่อน ทางสำรองคือไลบรารี JWT ที่มีอยู่ (`Microsoft.IdentityModel`) กับกุญแจของ Google ซึ่งต้องเขียนและทดสอบการแคช/หมุนกุญแจเอง
 - **ฝั่งหน้าเว็บ:** `modules/auth/` (components, hooks, services, types, utils) ปุ่ม "Sign in with Google" โหลดสคริปต์ Google Identity Services จาก `https://accounts.google.com/gsi/client` และรับ credential ส่งต่อให้ `POST /api/auth/google` Client ID อ่านจาก `VITE_GOOGLE_CLIENT_ID` (ไม่ใช่ความลับ) ส่วน `core/http`, `core/router`, `core/providers` และตัวประสานหลายแท็บใช้ต่อได้ทั้งหมด ตรรกะที่ทดสอบได้ใส่ใน `utils/` เป็น `*.test.ts` (ไม่เพิ่ม jsdom ใน 1a)
 - **ธีม:** ใช้ธีมมืดและตัวแปร CSS ที่ทำไว้แล้ว (ตาม ticket 017) `DESIGN.md` เป็นเอกสารอ้างอิงเท่านั้น ไม่ใช่ชุดสีของ Jod
 
@@ -210,7 +209,7 @@ email **ไม่ใช่ตัวระบุบัญชี** (ใช้ Goog
 1. เข้าสู่ระบบด้วย Google (ผ่านตัวตรวจ token ปลอมในเทสต์) สำเร็จได้ 200 + Access token + คุกกี้ และมีแถวผู้ใช้กับแถวผูก Google (`sub`) ไม่มี ID token ในฐานข้อมูลหรือ log
 2. เข้าสู่ระบบซ้ำด้วย `sub` เดิมได้ผู้ใช้คนเดิม (ไม่สร้างซ้ำ) และอีเมลถูกอัปเดตเมื่อเปลี่ยนใน token
 3. token ใช้ไม่ได้ได้ 401: ลายเซ็นผิด, `aud` ผิด, `iss` ผิด, หมดอายุ, รูปแบบผิด, ไม่มี credential (400) และ `email_verified` เป็นเท็จ ข้อมูลตัวตนที่แนบมาใน body นอกจาก credential ถูกเมิน (มีเทสต์ส่งอีเมลปลอมใน body แล้วต้องได้ผู้ใช้ตามที่อยู่ใน token)
-4. กลุ่มปิด: รายชื่อว่าง = ไม่มีใครเข้าได้, อีเมลที่ไม่อยู่ในรายชื่อได้ 403 พร้อมข้อความไทย, ตัวพิมพ์เล็กใหญ่/ช่องว่างไม่มีผล, บัญชีที่ไม่ใช่ Gmail และไม่มี `hd` ถูกปฏิเสธ (ร่าง OQ-11)
+4. กลุ่มปิด: รายชื่อว่าง = ไม่มีใครเข้าได้, อีเมลที่ไม่อยู่ในรายชื่อได้ 403 พร้อมข้อความไทย, ตัวพิมพ์เล็กใหญ่/ช่องว่างไม่มีผล, บัญชีที่ไม่ใช่ Gmail และไม่มี `hd` ถูกปฏิเสธ (OQ-11 ตัดสินแล้ว: ไม่รับใน v1)
 5. Refresh: ได้ Access token ใหม่ + คุกกี้ใหม่, ใบเก่าใช้ซ้ำ → 401 และทั้งชุดถูกเพิกถอน, คำขอ Refresh พร้อมกัน 2 คำขอด้วยใบเดียวกัน → หนึ่งสำเร็จ อีกหนึ่ง 401 และชุดถูกเพิกถอน, ครบ 30 วัน → 401, เอาอีเมลออกจากรายชื่อแล้วต่ออายุ → 401 และชุดถูกเพิกถอน
 6. ออกจากระบบ: Refresh หลังออกใช้ไม่ได้ คุกกี้ถูกลบ ทำซ้ำได้ คุกกี้ถูกต้องตามสเปค (HttpOnly, SameSite=Strict, Path, Secure นอก Development) และ `google`/Refresh/Logout ที่ไม่มี `X-Requested-With` ถูกปฏิเสธ 403
 7. `GET /api/me`: ไม่มีโทเคน, หมดอายุ, ลายเซ็นผิด → 401, โทเคนถูกต้อง → 200 และ endpoint ใหม่ใดๆ ที่ไม่ใส่ `[AllowAnonymous]` ถูกบังคับล็อกอินโดยอัตโนมัติ (มีเทสต์)
@@ -225,7 +224,7 @@ email **ไม่ใช่ตัวระบุบัญชี** (ใช้ Goog
 16. ไม่มีตารางหรือหน้าจอของ Note (ไม่ขยายไป 1b) ไม่เหลือโค้ดสมัคร/ล็อกอินด้วยรหัสผ่าน ล็อกบัญชี โหมดสมัครเปิด/ปิด หรือส่งอีเมล และเอกสารคำแนะนำ (`backend/CLAUDE.md`, `client/CLAUDE.md`, `README.md`) ตรงกับโค้ดจริง (การตรวจว่าถอดเส้นทางรหัสผ่านครบ ดูข้อ 19)
 17. **ตรวจด้วยมือหนึ่งครั้งกับ Google จริง** (เทสต์อัตโนมัติใช้ตัวปลอม): บัญชีที่อยู่ในรายชื่อเข้าได้ บัญชีที่ไม่อยู่ในรายชื่อถูกปฏิเสธ ทั้งเดสก์ท็อปและมือถือ
 18. ติดต่อ Google เพื่อดึงกุญแจตรวจลายเซ็นไม่ได้ (เทสต์ด้วยตัวตรวจที่ล้มเหลวจากเครือข่าย): ไม่ตอบ 401 และไม่เขียน token ลง log ตอบ 503 (หรือ 500 ทั่วไป) พร้อม `reference` ฝั่งหน้าเว็บแสดง "ตรวจสอบกับ Google ไม่ได้ชั่วคราว ลองอีกครั้ง" และไม่ถือว่าผู้ใช้ออกจากระบบ
-19. **ถอดเส้นทาง Email/Password ครบแล้ว (เกณฑ์ปิด 1a):** (ก) `POST /api/auth/register` และ `POST /api/auth/login` ไม่มีอยู่จริง ผู้ที่ล็อกอินแล้วเรียกได้ 404 (มีเทสต์) และไม่ปรากฏใน Swagger (ข) ค้นซอร์สโค้ดและไฟล์ตั้งค่า (`backend`, `client/src`, `appsettings*.json` และไฟล์ตัวอย่าง, `.env.example`) ไม่พบ `RegisterAsync`, `LoginAsync`, `RegisterRequestModel`, `LoginRequestModel`, `CheckPasswordAsync`, `PasswordHasher`, `Registration`, `Lockout`, `emailConfirmed`, `CredentialsForm`, `RegisterPage`, `credentials-validation` และไม่พบ `PasswordHash` ในโค้ดที่เขียนเอง (ชื่อคอลัมน์ใน migration ที่ EF สร้างไว้แล้วไม่นับ ถ้าผู้ใช้เลือกทางเลือก A) (ค) ไม่มีช่องกรอกรหัสผ่านในหน้าเว็บใด ไม่มีเส้นทาง `/register` (ง) เทสต์ทั้งหมดผ่านและไม่มีเทสต์ใดใช้ endpoint ที่ถอดแล้ว CI ผ่าน (จ) README และ CLAUDE.md ไม่มีข้อความ "สถานะเปลี่ยนผ่าน" เหลืออยู่ (ฉ) ทางเลือก A/B ของ schema ถูกตัดสินโดยผู้ใช้และบันทึกไว้แล้ว
+19. **ถอดเส้นทาง Email/Password ครบแล้ว (เกณฑ์ปิด 1a):** (ก) `POST /api/auth/register` และ `POST /api/auth/login` ไม่มีอยู่จริง ผู้ที่ล็อกอินแล้วเรียกได้ 404 (มีเทสต์) และไม่ปรากฏใน Swagger (ข) ค้นซอร์สโค้ดและไฟล์ตั้งค่า (`backend`, `client/src`, `appsettings*.json` และไฟล์ตัวอย่าง, `.env.example`) ไม่พบ `RegisterAsync`, `LoginAsync`, `RegisterRequestModel`, `LoginRequestModel`, `CheckPasswordAsync`, `PasswordHasher`, `Registration`, `Lockout`, `emailConfirmed`, `CredentialsForm`, `RegisterPage`, `credentials-validation` และไม่พบ `PasswordHash`, `AspNetUsers`, `AddIdentityCore` ใน `backend` (รวม migration เพราะเลือกทางเลือก B) (ค) ไม่มีช่องกรอกรหัสผ่านในหน้าเว็บใด ไม่มีเส้นทาง `/register` (ง) เทสต์ทั้งหมดผ่านและไม่มีเทสต์ใดใช้ endpoint ที่ถอดแล้ว CI ผ่าน (จ) README และ CLAUDE.md ไม่มีข้อความ "สถานะเปลี่ยนผ่าน" เหลืออยู่ (ฉ) migration ตารางผู้ใช้ใหม่ (ทางเลือก B) ผ่านการอนุมัติของผู้ใช้และสร้างจากฐานข้อมูลว่างได้
 
 ## 13. Dependency และสิ่งที่เลื่อน
 
@@ -236,12 +235,10 @@ email **ไม่ใช่ตัวระบุบัญชี** (ใช้ Goog
 
 ## 14. Open Questions และสิ่งที่ต้องตรวจตอนลงมือ
 
-- **OQ-11** บัญชี Google ที่ใช้อีเมลผู้ให้บริการอื่น (ไม่ใช่ Gmail/Workspace) เข้าได้หรือไม่ ร่างปัจจุบันปฏิเสธ
 - **OQ-12** ใครดูแลรายชื่ออนุญาตและเก็บที่ไหน ร่างคือค่าตั้งค่าของ Backend
 - **OQ-13** ใครเป็นเจ้าของ OAuth Client ID และสถานะหน้าจอขอความยินยอม (consent screen) ของ Google
 - **OQ-14** กู้พื้นที่ Note เมื่อสมาชิกเปลี่ยนบัญชี Google (ได้ `sub` ใหม่)
 - **OQ-15** ผู้รับ Share Link ที่ไม่ได้เป็นสมาชิกเข้าดูอย่างเดียวได้หรือไม่ (กระทบ 1a เล็กน้อย เพราะรายชื่ออนุญาตเป็นของสมาชิกเท่านั้น)
-- เลือกตัวตรวจ token: `Google.Apis.Auth` หรือไลบรารี JWT ที่มีอยู่ (ข้อ 10)
 - nonce / การกันนำ token เก่าซ้ำ ในโหมด JavaScript callback ต้องอ่านเอกสาร Google Identity Services เพิ่ม
 - ชื่อ/ชนิดใหม่นอกเหนือรายการในหัวข้อ 2 ต้องขอยืนยันก่อนตั้ง
 
@@ -259,7 +256,7 @@ email **ไม่ใช่ตัวระบุบัญชี** (ใช้ Goog
 
 **สถานะโค้ดตอนนี้ (ตรวจ 2026-10-20 จากโค้ดจริง):** บน branch `feat/1a-foundation` มีเฉพาะเส้นทาง email + รหัสผ่าน ยังไม่มีโค้ด Google เลย Email/Password ในโค้ดนี้เป็น **โค้ดจากการพัฒนารุ่นแรกก่อนการตัดสินใจ 2026-10-20 ที่ต้องถอดออกทั้งหมด** ไม่ใช่วิธีเข้าสู่ระบบที่ต้องรองรับร่วมกับ Google และห้ามต่อยอดหรือใช้เป็นแบบอย่าง
 
-**ขั้นตอน 2–4 ด้านล่างเป็นเพียงลำดับระหว่างพัฒนา ไม่ใช่ Requirement:** แบ่งเป็นขั้นเพื่อให้ทดสอบได้ทีละส่วนและมีทางถอยกลับ ระหว่างขั้น 2–4 ในเครื่องนักพัฒนาอาจมีทั้งสองเส้นทางอยู่ชั่วคราว **สถานะนั้นห้ามถือเป็นผลงาน 1a ที่เสร็จ ห้ามปล่อย และห้ามเขียนเอกสารว่ารองรับสองวิธี** งาน 1a ถือว่าเสร็จก็ต่อเมื่อผ่านขั้น 5 และเกณฑ์ตรวจรับข้อ 19 ในหัวข้อ 12 เท่านั้น
+**ขั้นตอน 2–4 ด้านล่างเป็นเพียงลำดับระหว่างพัฒนา ไม่ใช่ Requirement:** แบ่งเป็นขั้นเพื่อให้ทดสอบได้ทีละส่วนและมีทางถอยกลับ ระหว่างขั้น 2–4 ในเครื่องนักพัฒนาอาจมีโค้ดหน้าเว็บของเส้นทางรหัสผ่านเหลือชั่วคราว **สถานะนั้นห้ามถือเป็นผลงาน 1a ที่เสร็จ ห้ามปล่อย และห้ามเขียนเอกสารว่ารองรับสองวิธี** งาน 1a ถือว่าเสร็จก็ต่อเมื่อผ่านขั้น 5 และเกณฑ์ตรวจรับข้อ 19 ในหัวข้อ 12 เท่านั้น
 
 ### รายการโค้ดที่ใช้ต่อ / ปรับ / ถอด / ยังไม่ตัดสิน
 
@@ -275,14 +272,14 @@ email **ไม่ใช่ตัวระบุบัญชี** (ใช้ Goog
 | Backend `UserViewModel.EmailConfirmed` | `UserViewModel` | **ถอด** (ทุกบัญชีผ่านการยืนยันจาก Google) |
 | Backend โหมดสมัคร | `RegistrationOptions`, `RegistrationMode`, ส่วนตรวจใน `Program.cs` | **ถอด** แทนด้วยรายชื่ออนุญาตและ `Google:ClientId` |
 | Backend ตั้งค่า Identity ฝั่งรหัสผ่าน | `Program.cs`: `Password.*`, `Lockout`, `AllowedUserNameCharacters`, `RequireUniqueEmail` | **ถอด** |
-| Backend `AddIdentityCore`/`AddEntityFrameworkStores` และแพ็กเกจ `Microsoft.AspNetCore.Identity.EntityFrameworkCore` | `Program.cs`, `Jod.Service.csproj` | **ยังไม่ตัดสิน** ขึ้นกับทางเลือก A/B ของ schema ข้างล่าง |
+| Backend `AddIdentityCore`/`AddEntityFrameworkStores` และแพ็กเกจ `Microsoft.AspNetCore.Identity.EntityFrameworkCore` | `Program.cs`, `Jod.Service.csproj` | **ถอด** (ผู้ใช้เลือกทางเลือก B: ไม่ใช้ Identity) |
 | **API** | `POST /api/auth/register`, `POST /api/auth/login` | **ถอด** เพิ่ม `POST /api/auth/google` |
 | API | `POST /api/auth/refresh`, `POST /api/auth/logout`, `GET /api/me` | **ใช้ต่อ** ปรับ: ตัด `emailConfirmed` ออกจากคำตอบ, refresh ตรวจรายชื่อ |
 | **Configuration** | `Lockout` และ `Registration` ใน `backend/Web.Jod/appsettings.json` และ `appsettings.Development.example.json` (ไฟล์ `appsettings.Development.json` ในเครื่องไม่ติดตาม git ผู้ใช้ลบเอง) และ `Registration:Mode` ใน `JodWebFactory` | **ถอด** |
 | Configuration | `Jwt`, `RateLimit`, `ConnectionStrings` | **ใช้ต่อ** |
 | Configuration | `Google:ClientId`, `Access:AllowedEmails` ใน `appsettings.json` และไฟล์ตัวอย่าง (ค่าสมมติ), `VITE_GOOGLE_CLIENT_ID` ใน `client/.env.example` | **เพิ่ม** (ชื่อคีย์เป็นร่าง) |
-| **Schema** คอลัมน์ Identity ที่เกี่ยวกับรหัสผ่านและล็อกบัญชี (`PasswordHash`, `SecurityStamp`, `AccessFailedCount`, `LockoutEnd`, `LockoutEnabled` ฯลฯ ใน `AspNetUsers`) | `AspNetUsers` และ migration แรก | **ยังไม่ได้ตัดสิน ผู้ใช้ยังไม่ได้เลือก** ทางเลือก **A** คงไว้ ไม่เปลี่ยน schema (กระทบน้อยสุด ได้คอลัมน์ที่ไม่ใช้ทิ้งไว้) หรือ **B** migration เป็นตารางผู้ใช้เรียบง่ายก่อนมีตาราง Note (สะอาดกว่า แต่เปลี่ยน schema) ต้องขออนุมัติแยกก่อนทำ migration ทั้งสองทางโค้ดต้องไม่อ่านหรือเขียนคอลัมน์รหัสผ่าน |
-| Schema ตารางผูก Google (`AspNetUserLogins`) | migration แรก (มีอยู่แล้ว) | **ใช้ต่อ** (เสนอเก็บ `sub` ที่นี่ เป็นร่าง) |
+| **Schema** คอลัมน์ Identity ที่เกี่ยวกับรหัสผ่านและล็อกบัญชี (`PasswordHash`, `SecurityStamp`, `AccessFailedCount`, `LockoutEnd`, `LockoutEnabled` ฯลฯ ใน `AspNetUsers`) | `AspNetUsers` และ migration แรก | **เปลี่ยน** ผู้ใช้เลือกทางเลือก **B** เมื่อ 2026-10-20: migration เป็นตารางผู้ใช้เรียบง่าย (หัวข้อ 7) ก่อนมีตาราง Note ต้องขออนุมัติแยกก่อนทำ migration |
+| Schema ตารางผูก Google (`AspNetUserLogins`) | migration แรก | **ถอด** แทนด้วยคอลัมน์ Google `sub` (unique) ในตารางผู้ใช้ใหม่ |
 | **Frontend** ประสาน session, ส่งคำขอพร้อมโทเคน, ตัวแปล error, ธีมมืด, router, หน้า "บัญชีของฉัน" | `refresh-coordinator`, `browser-session`, `authorized-fetch`, `api-error`, `RequireAuth`, `AppRouter`, `AccountPage`, `index.css` | **ใช้ต่อ** |
 | Frontend session provider และ service | `AuthProvider`, `AuthContext` (`login`/`register`), `auth-service.ts` (`register`/`login`) | **ปรับ** เป็น `signInWithGoogle` (ชื่อใหม่ต้องขอยืนยัน) ส่วน `refreshSession`/`logout`/`fetchCurrentUser` ใช้ต่อ |
 | Frontend หน้าเข้าสู่ระบบ | `LoginPage` | **ปรับ** เป็นปุ่ม Google |
@@ -297,16 +294,14 @@ email **ไม่ใช่ตัวระบุบัญชี** (ใช้ Goog
 
 ### ลำดับงานที่กระทบน้อยที่สุด (รออนุมัติ ยังไม่ลงมือ)
 
-1. push 9 commit ที่ค้างให้ CI พิสูจน์ฐานเดิมก่อน (ไม่ใช่งานเปลี่ยนโค้ด ต้องได้รับอนุมัติแยก)
-2. **[ขั้นระหว่างพัฒนา]** Backend: เพิ่ม `GoogleOptions` + `AccessOptions` พร้อมตรวจตอนเริ่มแอป, `IGoogleIdTokenVerifier` + ตัวจริง, `SignInWithGoogleAsync` (หา/สร้างผู้ใช้ผ่านการผูก Google, ตรวจ `email_verified`/กฎ `hd`-Gmail/รายชื่อ), `POST /api/auth/google`, ตรวจรายชื่อตอน Refresh, ตัวตรวจ token ปลอมใน `JodWebFactory` และเทสต์ S1 ตามหัวข้อ 12 ในขั้นนี้ยัง **ไม่ถอด** เส้นทางรหัสผ่าน เพื่อให้เทียบพฤติกรรมและถอยกลับได้
+1. push 14 commit ที่ค้างให้ CI พิสูจน์ฐานเดิมก่อน (ผู้ใช้อนุมัติและ push แล้ว 2026-10-20)
+2. **[ขั้นระหว่างพัฒนา]** Backend: ทดลอง `Google.Apis.Auth` กับ .NET 10 ก่อนอย่างอื่น แล้วเพิ่ม `GoogleOptions` + `AccessOptions` พร้อมตรวจตอนเริ่มแอป, `IGoogleIdTokenVerifier` + ตัวจริง, `SignInWithGoogleAsync` (หา/สร้างผู้ใช้จาก Google `sub`, ตรวจ `email_verified`/กฎ `hd`-Gmail/รายชื่อ), `POST /api/auth/google`, ตรวจรายชื่อตอน Refresh, ตัวตรวจ token ปลอมใน `JodWebFactory` และเทสต์ S1 ตามหัวข้อ 12 **ข้อสังเกตจากทางเลือก B:** ตารางผู้ใช้ใหม่ไม่ใช่ Identity จึงอยู่ร่วมกับโค้ดรหัสผ่านที่ใช้ `UserManager` ไม่ได้ ขั้น 2 จึงต้องรวม migration ตารางผู้ใช้และถอดโค้ดรหัสผ่านที่พึ่ง Identity ไปพร้อมกัน (ทางถอยคือ git ฐานข้อมูลพัฒนาสร้างใหม่ได้) **ต้องได้รับอนุมัติแยกก่อนทำขั้นนี้**
 3. **[ขั้นระหว่างพัฒนา]** หน้าเว็บ: ปุ่ม Google + `signInWithGoogle` ใน service และ `AuthProvider`/`AuthContext` ปรับ `LoginPage` ตัดหน้า Register
 4. ตรวจด้วยมือกับ Google จริงหนึ่งครั้ง (หัวข้อ 12 ข้อ 17) พร้อมตั้ง OAuth Client ID (OQ-13)
-5. **ถอดเส้นทาง Email/Password ทั้งหมด** ตามตารางด้านบน (ทำหลังข้อ 4 ผ่านเพื่อมีทางถอย) และต้องผ่านเกณฑ์ตรวจรับข้อ 19 ก่อนถือว่า 1a เสร็จ
+5. **ถอดส่วนที่เหลือของเส้นทาง Email/Password** ตามตารางด้านบน (หน้าเว็บ `RegisterPage`/`CredentialsForm`, เทสต์เก่า, ตั้งค่า `Registration`/`Lockout` ฯลฯ ส่วนฝั่ง Backend ที่พึ่ง Identity ถูกถอดไปแล้วในขั้น 2) และต้องผ่านเกณฑ์ตรวจรับข้อ 19 ก่อนถือว่า 1a เสร็จ
 6. ปรับ `README.md` และ `CLAUDE.md` สองไฟล์ให้ตรงโค้ดจริง ลบหัวข้อ 17 นี้
 
 ### สิ่งที่ยังไม่ได้ตัดสิน (ไม่ใช่ Decision)
 
-- ทางเลือก A/B ของ schema (ผู้ใช้ยังไม่ได้เลือก)
-- ตัวตรวจ token: `Google.Apis.Auth` หรือไลบรารี JWT ที่มีอยู่ (หัวข้อ 10)
-- OQ-11 ถึง OQ-15 (หัวข้อ 14) รวมถึงกฎ `hd`/Gmail และที่เก็บรายชื่ออนุญาต
-- ชื่อชนิดและชื่อคีย์การตั้งค่าใหม่ทั้งหมด (หัวข้อ 2) ต้องขอผู้ใช้ยืนยันก่อนตั้ง
+- OQ-12 ถึง OQ-15 (หัวข้อ 14) รวมถึงที่เก็บรายชื่ออนุญาต
+- ชื่อคอลัมน์ของตารางผู้ใช้ใหม่ และชื่อชนิด/คีย์อื่นนอกรายการในหัวข้อ 2 ต้องขอผู้ใช้ยืนยันก่อนตั้ง (ชื่อในหัวข้อ 2 ผู้ใช้ยืนยันแล้ว 2026-10-20)
