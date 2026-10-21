@@ -8,7 +8,8 @@ This file provides guidance to AI coding agents (Claude Code, Codex, etc.) when 
 
 - React 19 + TypeScript (`strict`)
 - Vite 8 (build/dev server; `/api` is proxied to the backend), ESLint 10 + typescript-eslint, Vitest
-- Styling: plain CSS (`src/index.css`, `src/App.css`) — nothing else detected yet
+- Routing: `react-router`
+- Styling: plain CSS. The dark theme (the only theme) is a set of CSS custom properties in `src/index.css`; a module keeps its own styles in a `.css` file next to its components
 
 ## Architecture
 
@@ -18,15 +19,16 @@ This file provides guidance to AI coding agents (Claude Code, Codex, etc.) when 
 
 ## Project Structure
 
-Layout (`modules/weather` is the sample module — copy its shape for new features):
+Layout (`modules/auth` is the reference module for the folder shape and for the session parts — copy those for new features):
 
 ```
 src/
     core/                     # app-wide wiring
-        http/                 # http client (base URL, interceptors)
-        router/               # route setup
-        providers/
+        http/                 # requestJson/getJson, authorized-fetch (token + one retry on 401), api-error (ApiError)
+        router/               # AppRouter, RequireAuth
+        providers/            # AuthProvider
     modules/                  # features
+        auth/                 # session + Google sign-in (button, service that loads Google Identity Services)
         <module_name>/
             components/       # module components
             constants/
@@ -46,10 +48,22 @@ src/
 .env.example                  # environment template only — fake values
 ```
 
+### Auth and session rules
+
+- Google Sign-In is the only way to sign in (ADR 0006) and it is implemented. The sign-in page shows the Google button, not an email/password form and not a Register page. `services/google-identity.ts` loads Google Identity Services once, `GoogleSignInButton` draws the button, and `signInWithGoogle(credential)` sends the Google credential to the backend, which does all the verification. The page never decides who the user is from the credential it decodes (it does not decode it at all), and it keeps no password field anywhere. The Client ID comes from `VITE_GOOGLE_CLIENT_ID` (not a secret). **Checked only in the browser pane and by lint/test/build**: a real sign-in with Google has not been done yet (manual check, spec 1a acceptance criterion 17)
+- Parts of the session design: the session coordinator, `authorized-fetch`, `requestJson`/`getJson`, `ApiError`, `AuthProvider`'s restore/sign-out logic, `RequireAuth`, the router and the rules below on tokens and cookies
+- The access token lives in memory only, inside the session coordinator (`modules/auth/utils/refresh-coordinator.ts`, wired in `modules/auth/services/browser-session.ts`). Never put it in `localStorage`, `sessionStorage` or a cookie readable by scripts
+- The refresh token is an HttpOnly cookie that scripts cannot see. The server needs the header `X-Requested-With: jod` to renew or end a session; `auth-service.ts` adds it
+- Call the API through `requestJson`/`getJson` in `core/http`. They add the token, renew it once on a 401 and send the request again once; a second 401 ends the session. The body of such a request must be a string (JSON), because it can be sent twice
+- A renewal must never run twice at once: the refresh token rotates on every use and reusing an old one signs the user out. Web Locks make tabs take turns and a `BroadcastChannel` hands the new token to the other tabs, so only one request reaches the server
+- Sign-in, renewal and sign-out calls use `authorized: false` (the Google credential call, refresh and logout)
+- Every error from the server arrives as an `ApiError` (message in Thai plus a `reference`). Show the message and the reference; do not show anything else from the response
+
 ### Rules
 
 - Never put side effects inside presentational components
 - New features are added as a module under `modules/`
+- Browser-only glue (Web Locks, `BroadcastChannel`, `fetch`) stays thin and the logic around it goes in `utils/` with the browser parts passed in, because tests run in Node without a DOM
 - Do not create a new abstraction for one-off usage
 - Component filename MUST match its exported name
 

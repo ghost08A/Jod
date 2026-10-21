@@ -6,9 +6,15 @@ This file provides guidance to AI coding agents (Claude Code, Codex, etc.) when 
 
 ## Tech Stack
 
-- .NET 10 LTS (`net10.0`, ADR 0010) ASP.NET Core Web API (C#, `Nullable` and `ImplicitUsings` enabled), controller-based — projects are still `net8.0` until slice 1a upgrades them
+- .NET 10 LTS (`net10.0`, ADR 0010) ASP.NET Core Web API (C#, `Nullable` and `ImplicitUsings` enabled), controller-based
 - Swagger UI via Swashbuckle.AspNetCore (Development only)
-- No database/ORM yet (EF Core goes in `Jod.Service` when the first feature needs it)
+- PostgreSQL 16 through EF Core (Npgsql provider, ADR 0004). `JodDbContext` and the migrations live in `Jod.Service`
+- Authentication: **Google Sign-In only** (ADR 0006). The backend verifies the Google ID token itself (signature, `aud`, `iss`, `exp`, `email_verified`), identifies the user by the Google `sub` and never trusts identity data sent by the frontend. Jod then issues its own JWT access token (15 minutes, held in memory by the client) and a rotating refresh token in an HttpOnly cookie. Only emails on the allowed list may sign in (closed group, default deny). There are no passwords, no email verification or reset links, and Jod sends no email
+- **Current code (checked 2026-10-21):** Google Sign-In is the only way in and it is implemented: `POST /api/auth/google` (`AuthController`), `IAuthService.SignInWithGoogleAsync`, `IGoogleIdTokenVerifier` (real class `GoogleIdTokenVerifier` wraps `Google.Apis.Auth`), `GoogleOptions` (`Google:ClientId`) and `AccessOptions` (`Access:AllowedEmails`). The users table is the simple `Users` table (`AppUser`: `Id`, `GoogleSubject` unique, `Email`, `CreatedAt`), not ASP.NET Core Identity. **Checked only with a fake verifier in tests**: a token really signed by Google has not been verified against the real class yet (manual check, spec 1a acceptance criterion 17)
+- Never bring back passwords, email verification or reset links, email sending, or an "open registration" mode. Jod has none of them (ADR 0006). Email is used only as data: the allowed list, the address shown to the user, and the Share Link rule
+- Session design: JWT access token issue and validation, rotating refresh token, the `jod_refresh` cookie, the `X-Requested-With` check, the fallback "sign-in required" policy, the rate limiter, the error handler
+- Every endpoint needs sign-in unless it carries `[AllowAnonymous]` (fallback authorization policy), so a new endpoint is protected without anyone remembering to protect it
+- Errors: one central middleware (`Web.Jod/Middleware`) answers every failure as `application/problem+json` with a `reference` that is also in the log
 
 ## Architecture
 
@@ -38,7 +44,8 @@ Business logic and operations.
 
 Shared types, models, contracts and interfaces between layers.
 
-- `Interfaces/` service interfaces (e.g. `INoteService`), `RequestModels/`, `ViewModels/`, `Enums/`, `Models/` (entities), `CustomError`
+- `Interfaces/` service interfaces (e.g. `IAuthService`), `RequestModels/`, `ViewModels/`, `Enums/`, `Models/` (models passed between layers only, e.g. `AuthSessionModel`, which carries the refresh token and must never be serialized to a client), `CustomError`
+- EF entities (`AppUser`, `RefreshToken`) live in `Jod.Service/Data`, not here, so Domain needs no Identity or database package
 - MUST NOT reference Web or Service, MUST NOT connect to a database
 - Defines structure and contracts only — not a home for business logic
 
@@ -54,9 +61,11 @@ No circular dependencies between projects.
 
 ### Request Lifecycle
 
-`POST /api/notes` → Controller (`Web.Jod`) binds `CreateNoteRequestModel` → calls `INoteService` via DI →
-`NoteService` (`Jod.Service`) checks business rules, uses `DbContext` → returns `NoteViewModel` →
-Controller returns the HTTP response.
+Flow of `POST /api/auth/google`: → `ApiExceptionHandler` (outermost middleware) → rate limiter → `AuthController` (`Web.Jod`)
+binds the request model (the Google credential) → calls `IAuthService` via DI → `AuthService` (`Jod.Service`) has the ID token
+verified through `IGoogleIdTokenVerifier`, checks the allowed list, finds or creates the user, issues tokens, uses `JodDbContext`
+→ returns `AuthSessionModel` → the controller sets the refresh cookie and returns only `AuthResultViewModel` as JSON.
+A `CustomError` thrown anywhere below is turned into a 4xx problem by the middleware.
 
 ### Rules for AI Agents (Backend)
 
@@ -73,28 +82,35 @@ Controller returns the HTTP response.
 
 ## Project Structure
 
-`WeatherForecast` is the sample feature. Empty folders below hold a `.gitkeep` until first used.
+The folders below exist because code lives in them. `Jod.Service/Helper` is empty and holds a `.gitkeep` until first used.
+Repo root also holds `docker-compose.yml` (PostgreSQL for development), `.env.example`, `.config/dotnet-tools.json` (the `dotnet-ef` tool) and `.github/workflows/ci.yml`.
 
 ```
 backend/
 ├── Jod.slnx
 ├── Jod.Domain/
-│   ├── Interfaces/            # IWeatherForecastService
-│   ├── RequestModels/
-│   ├── ViewModels/            # WeatherForecastViewModel
-│   ├── Enums/
-│   ├── Models/                # entities
-│   └── CustomError.cs         # shared error contract (Messages, ThrowIfAny)
+│   ├── Enums/                 # ErrorKind (what a CustomError means: validation, unauthorized, forbidden, conflict, unavailable)
+│   ├── Interfaces/            # IAuthService, IGoogleIdTokenVerifier
+│   ├── Models/                # AuthSessionModel, GoogleIdentity (between layers only)
+│   ├── RequestModels/         # GoogleSignInRequestModel (only the Google credential)
+│   ├── ViewModels/            # AuthResultViewModel, UserViewModel
+│   └── CustomError.cs         # business error: Messages + Kind
 ├── Jod.Service/
-│   ├── ImplementServices/     # WeatherForecastService
+│   ├── Data/                  # JodDbContext, AppUser (Google sub + email), RefreshToken
+│   ├── ImplementServices/     # AuthService, GoogleIdTokenVerifier (the real Google check)
+│   ├── Migrations/            # EF Core migrations (generated, see Database rules)
+│   ├── Options/               # JwtOptions, GoogleOptions (client id), AccessOptions (allowed emails)
 │   └── Helper/
-├── Jod.Service.Tests/         # xUnit + Moq (references Service, Domain)
+├── Jod.Service.Tests/         # unit tests: xUnit + Moq, pure logic, no database
+├── Jod.Integration.Tests/     # S1 seam: the real app + a real PostgreSQL, called over HTTP
 └── Web.Jod/
-    ├── Controllers/           # route `api/[controller]`
+    ├── Controllers/           # AuthController (google, refresh, logout, me)
+    ├── Extensions/            # ClaimsPrincipalExtensions (GetUserId)
+    ├── Middleware/            # ApiExceptionHandler, ErrorResponses
     ├── Properties/launchSettings.json
-    ├── appsettings.json
-    ├── appsettings.Development.json           # local only, gitignored (may hold dev keys)
-    ├── appsettings.Development.example.json
+    ├── appsettings.json                       # settings that are not secret
+    ├── appsettings.Development.json           # local only, gitignored (database password, JWT key)
+    ├── appsettings.Development.example.json   # template with placeholders
     └── Program.cs             # app composition + DI
 ```
 
@@ -127,7 +143,7 @@ backend/
 
 ### Business Validation
 
-Use `CustomError` (`Jod.Domain/CustomError.cs`) for every business-validation failure — never `throw new Exception(...)`. Controllers catch it and return `400` with its `Messages`. Shape:
+Use `CustomError` (`Jod.Domain/CustomError.cs`) for every business-validation failure — never `throw new Exception(...)`. Controllers do not catch it: the central `ApiExceptionHandler` middleware (`Web.Jod/Middleware`) turns it into a `400` `application/problem+json` response whose `errors` are its `Messages` (write them in Thai, the user sees them) plus a `reference` that is also written to the log. Any other exception becomes a generic `500` with a `reference`; the log keeps only its type and stack trace, never its message. Shape:
 
 ```csharp
 public class CustomError : Exception
@@ -165,15 +181,21 @@ ex.ThrowIfAny();
 - Keep API response format consistent with existing endpoints
 - DO NOT change route names, request models, or response models unless required
 - Return meaningful error messages without exposing sensitive internal details
+- Never put a token (Google ID token, access token, refresh token), an email or the contents of a request into a response body, a log line or an exception message. The refresh token travels only in the `jod_refresh` cookie
+- Endpoints that sign in, renew or end a session (`/api/auth/google`, `/api/auth/refresh`, `/api/auth/logout`) require the header `X-Requested-With: jod`, so a page on another site cannot trigger them with the cookie
+- Never read a name, email or Google id from the request body to decide who the user is. Identity comes only from the verified ID token (Google `sub`); the email is information that is refreshed at every sign-in, never a key
+- Rate limits are per IP address in two buckets: `auth` (sign-in endpoint, 10 a minute) and `refresh` (60 a minute). Add `[EnableRateLimiting("...")]` to a new sign-in style endpoint. The `auth` bucket is attached to `POST /api/auth/google`
 
 ### Database / EF Core Rules
 
-No database yet. When one is added:
-
-- DO NOT modify database schema unless explicitly requested
+- DO NOT modify database schema unless explicitly requested. A schema change is always an EF Core migration, never a hand-edited table
+- Create a migration from the repo root: `dotnet ef migrations add <Name> --project backend/Jod.Service --startup-project backend/Web.Jod --output-dir Migrations`, then apply it with `dotnet ef database update` (same two `--project` options)
+- The generated migration files use CRLF and a BOM on Windows, which `dotnet format` refuses. Convert only the files you just generated to LF without BOM
 - Use `AsNoTracking()` for read-only queries
 - Avoid N+1 queries; use `Include()` only when necessary
 - Never access `DbContext` from a Controller — only from `Jod.Service`
+- A value that many requests change at the same moment (a counter, a "used" flag such as the refresh token claim) is changed with one conditional `ExecuteUpdateAsync`, not read, changed and saved back. Lesson from the first build's password lockout (since removed): 40 parallel wrong passwords counted as 1 or 2 with a read-modify-write counter
+- A time that matters in a test (token expiry) is read from the injected `TimeProvider`, or moved in the database by the test. JwtBearer reads the real clock
 
 ### Editor Config
 
@@ -225,9 +247,11 @@ Run from `backend/`:
 ```bash
 dotnet restore
 dotnet build
-dotnet test
+dotnet test                         # the integration tests need JOD_TEST_POSTGRES, see Test Runner
 dotnet format --verify-no-changes   # enforces .editorconfig; must pass in CI too
 ```
+
+Development database (from the repo root, see `README.md`): `docker compose up -d --wait`, then `dotnet tool restore` and `dotnet ef database update --project backend/Jod.Service --startup-project backend/Web.Jod`.
 
 ## Testing & Quality
 
@@ -240,7 +264,12 @@ Before marking a task complete:
 
 ### Test Runner
 
-- Use XUnit for all unit tests and Moq for mock dependencies (`Jod.Service.Tests/`)
+- Use XUnit for all unit tests and Moq for mock dependencies (`Jod.Service.Tests/`). Keep these for pure logic that needs no database
+- Features are tested through the S1 seam in `Jod.Integration.Tests/`: `JodWebFactory` starts the real app against a throwaway PostgreSQL database (migrated, dropped afterwards) and the test calls the endpoint over HTTP. Prefer this over testing a service in isolation
+- The integration tests need a PostgreSQL server they may create databases on. Set `JOD_TEST_POSTGRES` to a connection string for it (database `postgres`); without it the tests fail with a clear message instead of being skipped. CI sets it for its own service container
+- The factory runs the app in the `Test` environment with a test-only signing key. Tests cannot call Google, so the factory replaces `IGoogleIdTokenVerifier` with `FakeGoogleIdTokenVerifier`, which turns a test credential (built by `TestGoogle`) into the claims of a verified token. The factory also puts a pool of 1000 test emails (`TestGoogle.NewEmail()`) on the allowed list; a test that needs another list changes `IOptions<AccessOptions>` or uses `PostConfigure` in `WithWebHostBuilder`. The factory also adds test-only controllers (`TestErrorController`, `TestProbeController`) so errors and protected-by-default endpoints can be provoked
+- Every test that checks logging must scan `JodWebFactory.LogEntries`, which holds each log line and exception the app wrote
+- A test that only passes because the code is wrong is worse than no test: when you add a check, break the code on purpose once and see the test fail
 
 ### Unit Test Rules
 

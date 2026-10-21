@@ -1,9 +1,13 @@
-import { WeatherPage } from './modules/weather/components/WeatherPage'
+import { BrowserRouter } from 'react-router'
+import { AuthProvider } from './core/providers/AuthProvider'
+import { AppRouter } from './core/router/AppRouter'
 
 export function App() {
     return (
-        <main>
-            <WeatherPage />
-        </main>
+        <BrowserRouter>
+            <AuthProvider>
+                <AppRouter />
+            </AuthProvider>
+        </BrowserRouter>
     )
 }
