@@ -14,6 +14,8 @@ public static class ErrorResponses
     private const string ReferenceAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private const int ReferenceLength = 8;
 
+    public const string InvalidDataMessage = "ข้อมูลที่ส่งมาไม่ถูกต้อง";
+
     public static string NewReference() =>
         RandomNumberGenerator.GetString(ReferenceAlphabet, ReferenceLength);
 
@@ -26,7 +28,7 @@ public static class ErrorResponses
         _ => StatusCodes.Status400BadRequest,
     };
 
-    public static ProblemDetails Create(int status, string reference, IReadOnlyList<string>? errors)
+    public static ProblemDetails Create(int status, string reference, IReadOnlyList<string>? errors, object? payload = null)
     {
         var (title, detail) = Describe(status);
         var problem = new ProblemDetails { Status = status, Title = title, Detail = detail };
@@ -34,6 +36,10 @@ public static class ErrorResponses
         if (errors is { Count: > 0 })
         {
             problem.Extensions["errors"] = errors;
+        }
+        if (payload is not null)
+        {
+            problem.Extensions["payload"] = payload;
         }
         return problem;
     }
@@ -52,7 +58,7 @@ public static class ErrorResponses
     {
         // Note: ModelState is ignored on purpose. Its messages are framework text (English, with
         // JSON paths and field names). Messages the user should see come from Services as CustomError.
-        throw new CustomError("ข้อมูลที่ส่งมาไม่ถูกต้อง");
+        throw new CustomError(InvalidDataMessage);
     }
 
     private static (string Title, string Detail) Describe(int status) => status switch
@@ -63,6 +69,7 @@ public static class ErrorResponses
         StatusCodes.Status404NotFound => ("ไม่พบข้อมูล", "ไม่พบสิ่งที่ต้องการ"),
         StatusCodes.Status405MethodNotAllowed => ("ไม่รองรับคำขอนี้", "ระบบไม่รองรับวิธีเรียกใช้งานนี้"),
         StatusCodes.Status409Conflict => ("ข้อมูลขัดแย้ง", "ข้อมูลขัดแย้งกับที่มีอยู่แล้ว"),
+        StatusCodes.Status413PayloadTooLarge => ("ข้อมูลใหญ่เกินไป", "ข้อมูลที่ส่งมามีขนาดใหญ่เกินกำหนด"),
         StatusCodes.Status429TooManyRequests => ("ส่งคำขอถี่เกินไป", "กรุณารอสักครู่แล้วลองใหม่"),
         StatusCodes.Status503ServiceUnavailable => ("บริการภายนอกไม่พร้อมใช้งาน", "ติดต่อบริการภายนอกไม่ได้ชั่วคราว ลองอีกครั้ง"),
         >= 500 => ("เกิดข้อผิดพลาดในระบบ", "ระบบขัดข้องชั่วคราว ลองใหม่อีกครั้ง หากยังไม่หายให้แจ้งผู้ดูแลพร้อมรหัสอ้างอิง"),

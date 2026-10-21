@@ -9,6 +9,7 @@ using System.Threading.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Http.Features;
 using Web.Jod.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,9 +19,20 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<JodDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")
         ?? throw new InvalidOperationException("ConnectionStrings:Default is not set (see appsettings.Development.example.json).")));
+// Note: Block documents nest `children`, about 2 JSON levels per block level, so the default depth of 64 is too low
+// for the product limit of 100 block levels. Reading (MVC) and writing (error payloads) both need it.
+// Note: the value is read when the options are first used (not here) so a test host can change it
+static int JsonMaxDepth(IConfiguration configuration) => configuration.GetValue("Limits:JsonMaxDepth", 256);
 builder.Services.AddControllers()
     .ConfigureApiBehaviorOptions(options =>
         options.InvalidModelStateResponseFactory = ErrorResponses.ThrowForInvalidModelState);
+builder.Services.AddOptions<Microsoft.AspNetCore.Mvc.JsonOptions>().Configure<IConfiguration>((options, configuration) =>
+    options.JsonSerializerOptions.MaxDepth = JsonMaxDepth(configuration));
+builder.Services.AddOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>().Configure<IConfiguration>((options, configuration) =>
+    options.SerializerOptions.MaxDepth = JsonMaxDepth(configuration));
+// Note: model validation of a nested model has its own depth limit (default 32) that would answer 500
+builder.Services.AddOptions<Microsoft.AspNetCore.Mvc.MvcOptions>().Configure<IConfiguration>((options, configuration) =>
+    options.MaxValidationDepth = JsonMaxDepth(configuration));
 
 // Settings. A missing, too short or still-placeholder signing key stops the app at startup.
 builder.Services.AddOptions<JwtOptions>()
@@ -106,6 +118,23 @@ if (app.Services.GetRequiredService<IOptions<AccessOptions>>().Value.AllowedEmai
 
 // Note: must stay first so it can answer for every other middleware
 app.UseMiddleware<ApiExceptionHandler>();
+// Note: request body limit in bytes (1 MB), answered as 413 problem+json by the handler above. Kestrel enforces the
+// feature limit while the body is read (also for bodies without Content-Length); the Content-Length check refuses
+// a declared oversize body up front and also works on hosts that ignore the feature (the test server).
+var maxRequestBodyBytes = app.Configuration.GetValue("Limits:RequestBodyMaxBytes", 1_048_576L);
+app.Use((context, next) =>
+{
+    if (context.Request.ContentLength > maxRequestBodyBytes)
+    {
+        throw new BadHttpRequestException("Request body too large.", StatusCodes.Status413PayloadTooLarge);
+    }
+    var feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
+    if (feature is { IsReadOnly: false })
+    {
+        feature.MaxRequestBodySize = maxRequestBodyBytes;
+    }
+    return next(context);
+});
 // Note: an over-limit request is answered with an empty 429 here and the handler above turns it into problem+json
 app.UseRateLimiter();
 
