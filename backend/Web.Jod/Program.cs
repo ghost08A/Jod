@@ -1,4 +1,5 @@
 using Jod.Domain.Interfaces;
+using System.ComponentModel.DataAnnotations;
 using Jod.Service.Data;
 using Jod.Service.ImplementServices;
 using Jod.Service.Options;
@@ -31,31 +32,21 @@ builder.Services.AddOptions<JwtOptions>()
     .Validate(jwt => !jwt.SigningKey.StartsWith(JwtOptions.PlaceholderPrefix, StringComparison.Ordinal),
         "Jwt:SigningKey is still the placeholder from the example settings file.")
     .ValidateOnStart();
-builder.Services.AddOptions<RegistrationOptions>()
-    .Bind(builder.Configuration.GetSection(RegistrationOptions.SectionName))
-    // Note: open sign-up is only for development and tests, so a copied setting cannot open a real deployment to strangers
-    .Validate<IHostEnvironment>(
-        (registration, environment) => registration.Mode != RegistrationMode.Open
-            || environment.IsDevelopment() || environment.IsEnvironment("Test"),
-        "Registration:Mode = Open is only allowed in the Development and Test environments.")
+builder.Services.AddOptions<GoogleOptions>()
+    .Bind(builder.Configuration.GetSection(GoogleOptions.SectionName))
+    .Validate(google => !string.IsNullOrWhiteSpace(google.ClientId)
+            && !google.ClientId.StartsWith(GoogleOptions.PlaceholderPrefix, StringComparison.Ordinal),
+        "Google:ClientId must be set and must not be the placeholder from the example settings file.")
+    .ValidateOnStart();
+builder.Services.AddOptions<AccessOptions>()
+    .Bind(builder.Configuration.GetSection(AccessOptions.SectionName))
+    .Validate(access => access.AllowedEmails.All(email => new EmailAddressAttribute().IsValid(email.Trim())),
+        "Access:AllowedEmails must only hold valid email addresses.")
     .ValidateOnStart();
 
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddIdentityCore<AppUser>(options =>
-    {
-        // Note: only the length is enforced, no required mix of letters, digits and symbols
-        options.Password.RequiredLength = AuthService.MinPasswordLength;
-        options.Password.RequireDigit = false;
-        options.Password.RequireLowercase = false;
-        options.Password.RequireUppercase = false;
-        options.Password.RequireNonAlphanumeric = false;
-        options.User.RequireUniqueEmail = true;
-        // Note: lock the account after repeated wrong passwords; the numbers come from the "Lockout" settings
-        builder.Configuration.GetSection("Lockout").Bind(options.Lockout);
-        // Note: the user name is the email, so any character an email may hold is allowed
-        options.User.AllowedUserNameCharacters = "";
-    })
-    .AddEntityFrameworkStores<JodDbContext>();
+// Note: stateless (Google's public keys are cached inside the library), so one instance is enough
+builder.Services.AddSingleton<IGoogleIdTokenVerifier, GoogleIdTokenVerifier>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
@@ -79,7 +70,7 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
 builder.Services.AddAuthorization(options =>
     options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
-// Note: sign-up and login allow only a few requests per minute from one IP address, token renewal a few more.
+// Note: signing in allows only a few requests per minute from one IP address, token renewal a few more.
 // The window length is a setting only so tests can use a short one; the real default is one minute.
 builder.Services.AddRateLimiter(options =>
 {
@@ -87,7 +78,7 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
     // Note: each policy is its own bucket per IP address. Silent renewal runs on every page load and needs
-    // the right cookie, so it has a bigger bucket and cannot use up the one that protects sign-up and login.
+    // the right cookie, so it has a bigger bucket and cannot use up the one that protects sign-in.
     void AddPerIpPolicy(string policyName, int requestsPerWindow) =>
         options.AddPolicy(policyName, httpContext => RateLimitPartition.GetFixedWindowLimiter(
             httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -107,6 +98,11 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+if (app.Services.GetRequiredService<IOptions<AccessOptions>>().Value.AllowedEmails.Count == 0)
+{
+    app.Logger.LogWarning("Access:AllowedEmails is empty, so nobody can sign in.");
+}
 
 // Note: must stay first so it can answer for every other middleware
 app.UseMiddleware<ApiExceptionHandler>();

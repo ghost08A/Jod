@@ -28,7 +28,7 @@ public class DatabaseMigrationTests : IClassFixture<TestDatabase>
         var tables = await context.Database
             .SqlQuery<string>($"SELECT table_name AS \"Value\" FROM information_schema.tables WHERE table_schema = 'public'")
             .ToListAsync();
-        Assert.Contains("AspNetUsers", tables);
+        Assert.Contains("Users", tables);
         Assert.Contains("RefreshTokens", tables);
     }
 
@@ -53,7 +53,7 @@ public class DatabaseMigrationTests : IClassFixture<TestDatabase>
         // Arrange
         await using var context = _database.CreateContext();
         await context.Database.MigrateAsync();
-        var user = new AppUser { UserName = "a@example.com", Email = "a@example.com" };
+        var user = NewUser("subject-a");
         context.Users.Add(user);
         await context.SaveChangesAsync();
         var hash = new byte[32];
@@ -67,6 +67,48 @@ public class DatabaseMigrationTests : IClassFixture<TestDatabase>
         // Assert
         Assert.IsType<DbUpdateException>(exception);
     }
+
+    [Fact]
+    public async Task User_WithADuplicateGoogleSubject_IsRejected()
+    {
+        // Arrange
+        await using var context = _database.CreateContext();
+        await context.Database.MigrateAsync();
+        context.Users.Add(NewUser("subject-duplicate"));
+        await context.SaveChangesAsync();
+
+        // Act
+        context.Users.Add(NewUser("subject-duplicate"));
+        var exception = await Record.ExceptionAsync(() => context.SaveChangesAsync());
+
+        // Assert
+        Assert.IsType<DbUpdateException>(exception);
+    }
+
+    [Fact]
+    public async Task Users_MayShareAnEmail()
+    {
+        // Arrange
+        await using var context = _database.CreateContext();
+        await context.Database.MigrateAsync();
+        context.Users.Add(NewUser("subject-one", "shared@example.com"));
+        await context.SaveChangesAsync();
+
+        // Act
+        context.Users.Add(NewUser("subject-two", "shared@example.com"));
+        var exception = await Record.ExceptionAsync(() => context.SaveChangesAsync());
+
+        // Assert
+        Assert.Null(exception);
+    }
+
+    private static AppUser NewUser(string googleSubject, string email = "a@example.com") => new()
+    {
+        Id = Guid.NewGuid(),
+        GoogleSubject = googleSubject,
+        Email = email,
+        CreatedAt = DateTimeOffset.UtcNow,
+    };
 
     private static RefreshToken NewToken(Guid userId, byte[] hash) => new()
     {

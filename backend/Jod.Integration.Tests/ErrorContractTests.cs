@@ -158,9 +158,7 @@ public class ErrorContractTests : IClassFixture<JodWebFactory>
 
     private async Task<HttpClient> SignedInClientAsync()
     {
-        var registered = await _client.PostAsJsonAsync(
-            "/api/auth/register", new { email = $"{Guid.NewGuid():N}@example.com", password = "a-long-enough-password" });
-        var token = (await registered.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("accessToken").GetString();
+        var token = await TestGoogle.SignInAndGetAccessTokenAsync(_client);
         var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new("Bearer", token);
         return client;

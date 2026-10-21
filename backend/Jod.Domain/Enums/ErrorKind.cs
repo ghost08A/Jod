@@ -9,4 +9,5 @@ public enum ErrorKind
     Unauthorized,
     Forbidden,
     Conflict,
+    Unavailable,
 }

@@ -4,16 +4,17 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Jod.Service.Data;
+using Jod.Service.Options;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Jod.Integration.Tests;
 
 public class RefreshTokenTests : IClassFixture<JodWebFactory>
 {
-    private const string Password = "a-long-enough-password";
     private const string CookieName = "jod_refresh";
 
     private readonly JodWebFactory _factory;
@@ -30,16 +31,16 @@ public class RefreshTokenTests : IClassFixture<JodWebFactory>
     // ---- cookie and storage ----
 
     [Theory]
-    [InlineData("register")]
-    [InlineData("login")]
-    public async Task SignUpAndLogin_SetTheRefreshCookieWithTheAgreedAttributes(string action)
+    [InlineData("first")]
+    [InlineData("again")]
+    public async Task SignIn_SetsTheRefreshCookieWithTheAgreedAttributes(string visit)
     {
         // Arrange
         var email = NewEmail();
-        var registered = await Register(email);
+        var firstVisit = await SignIn(email);
 
         // Act
-        var response = action == "register" ? registered : await Login(email);
+        var response = visit == "first" ? firstVisit : await SignIn(email);
 
         // Assert
         var cookie = ReadSetCookie(response);
@@ -61,7 +62,7 @@ public class RefreshTokenTests : IClassFixture<JodWebFactory>
         var client = development.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/auth/register", new { email = NewEmail(), password = Password });
+        var response = await TestGoogle.SignInAsync(client);
 
         // Assert
         Assert.DoesNotContain("secure", ReadSetCookie(response).Attributes);
@@ -71,7 +72,7 @@ public class RefreshTokenTests : IClassFixture<JodWebFactory>
     public async Task TheDatabaseStoresOnlyTheHashOfTheRefreshToken()
     {
         // Arrange
-        var response = await Register(NewEmail());
+        var response = await SignIn(NewEmail());
         var rawToken = ReadSetCookie(response).Value;
 
         // Act
@@ -87,7 +88,7 @@ public class RefreshTokenTests : IClassFixture<JodWebFactory>
     public async Task TheRefreshTokenNeverAppearsInAResponseBody()
     {
         // Act
-        var response = await Register(NewEmail());
+        var response = await SignIn(NewEmail());
         var rawToken = ReadSetCookie(response).Value;
 
         // Assert
@@ -100,7 +101,7 @@ public class RefreshTokenTests : IClassFixture<JodWebFactory>
     public async Task Refresh_GivesANewAccessTokenAndANewCookie_AndTheOldTokenCannotBeUsedAgain()
     {
         // Arrange
-        var first = ReadSetCookie(await Register(NewEmail()));
+        var first = ReadSetCookie(await SignIn(NewEmail()));
 
         // Act
         var refreshed = await Refresh(first.Value);
@@ -121,7 +122,7 @@ public class RefreshTokenTests : IClassFixture<JodWebFactory>
     public async Task Refresh_ReturnsAnAccessTokenThatWorks()
     {
         // Arrange
-        var first = ReadSetCookie(await Register(NewEmail()));
+        var first = ReadSetCookie(await SignIn(NewEmail()));
 
         // Act
         var refreshed = await (await Refresh(first.Value)).Content.ReadFromJsonAsync<JsonElement>();
@@ -137,7 +138,7 @@ public class RefreshTokenTests : IClassFixture<JodWebFactory>
     public async Task ReusingAnOldToken_RevokesTheWholeFamily_IncludingTheNewestToken()
     {
         // Arrange
-        var first = ReadSetCookie(await Register(NewEmail()));
+        var first = ReadSetCookie(await SignIn(NewEmail()));
         var second = ReadSetCookie(await Refresh(first.Value));
 
         // Act
@@ -153,7 +154,7 @@ public class RefreshTokenTests : IClassFixture<JodWebFactory>
     public async Task TwoRefreshesAtTheSameTimeWithOneToken_OneWins_AndTheFamilyIsRevoked()
     {
         // Arrange
-        var first = ReadSetCookie(await Register(NewEmail()));
+        var first = ReadSetCookie(await SignIn(NewEmail()));
 
         // Act
         var responses = await Task.WhenAll(Enumerable.Range(0, 2).Select(_ => Refresh(first.Value)));
@@ -169,7 +170,7 @@ public class RefreshTokenTests : IClassFixture<JodWebFactory>
     public async Task ARefreshTokenOlderThanThirtyDays_IsRejected()
     {
         // Arrange
-        var token = ReadSetCookie(await Register(NewEmail())).Value;
+        var token = ReadSetCookie(await SignIn(NewEmail())).Value;
         // Note: "thirty days later" is simulated by moving the token's expiry into the past
         await ExpireTokenAsync(token);
 
@@ -193,13 +194,48 @@ public class RefreshTokenTests : IClassFixture<JodWebFactory>
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
     }
 
+    // ---- the closed group is checked again at every renewal ----
+
+    [Fact]
+    public async Task Refresh_AfterTheEmailLeavesTheAllowedList_IsRejected_AndTheFamilyStaysRevoked()
+    {
+        // Arrange
+        var email = NewEmail();
+        var phone = ReadSetCookie(await SignIn(email)).Value;
+        var laptop = ReadSetCookie(await SignIn(email)).Value;
+        AllowedEmails().Remove(email);
+
+        try
+        {
+            // Act
+            var whileRemoved = await Refresh(phone);
+            AllowedEmails().Add(email);
+            var afterBeingAddedBack = await Refresh(phone);
+            var otherDevice = await Refresh(laptop);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.Unauthorized, whileRemoved.StatusCode);
+            // Note: still rejected after the email is back, so the family was revoked and not just refused once
+            Assert.Equal(HttpStatusCode.Unauthorized, afterBeingAddedBack.StatusCode);
+            // Note: the other device's family is only revoked when that device renews while the email is off the list
+            Assert.Equal(HttpStatusCode.OK, otherDevice.StatusCode);
+        }
+        finally
+        {
+            if (!AllowedEmails().Contains(email))
+            {
+                AllowedEmails().Add(email);
+            }
+        }
+    }
+
     // ---- logout ----
 
     [Fact]
     public async Task Logout_RevokesTheTokenAndClearsTheCookie_AndCanBeRepeated()
     {
         // Arrange
-        var token = ReadSetCookie(await Register(NewEmail())).Value;
+        var token = ReadSetCookie(await SignIn(NewEmail())).Value;
 
         // Act
         var logout = await Logout(token);
@@ -223,8 +259,8 @@ public class RefreshTokenTests : IClassFixture<JodWebFactory>
     {
         // Arrange
         var email = NewEmail();
-        var phone = ReadSetCookie(await Register(email)).Value;
-        var laptop = ReadSetCookie(await Login(email)).Value;
+        var phone = ReadSetCookie(await SignIn(email)).Value;
+        var laptop = ReadSetCookie(await SignIn(email)).Value;
 
         // Act
         await Logout(phone);
@@ -244,7 +280,7 @@ public class RefreshTokenTests : IClassFixture<JodWebFactory>
     public async Task RefreshAndLogout_WithoutTheRequestedWithHeader_AreForbidden(string action, string? headerValue)
     {
         // Arrange
-        var token = ReadSetCookie(await Register(NewEmail())).Value;
+        var token = ReadSetCookie(await SignIn(NewEmail())).Value;
         var request = new HttpRequestMessage(HttpMethod.Post, $"/api/auth/{action}");
         request.Headers.Add("Cookie", $"{CookieName}={token}");
         if (headerValue is not null)
@@ -266,7 +302,7 @@ public class RefreshTokenTests : IClassFixture<JodWebFactory>
     public async Task Logs_DoNotContainRefreshTokens()
     {
         // Arrange
-        var first = ReadSetCookie(await Register(NewEmail())).Value;
+        var first = ReadSetCookie(await SignIn(NewEmail())).Value;
 
         // Act
         var second = ReadSetCookie(await Refresh(first)).Value;
@@ -283,13 +319,12 @@ public class RefreshTokenTests : IClassFixture<JodWebFactory>
 
     // ---- helpers ----
 
-    private static string NewEmail() => $"{Guid.NewGuid():N}@example.com";
+    private static string NewEmail() => TestGoogle.NewEmail();
 
-    private Task<HttpResponseMessage> Register(string email) =>
-        _client.PostAsJsonAsync("/api/auth/register", new { email, password = Password });
+    private Task<HttpResponseMessage> SignIn(string email) => TestGoogle.SignInAsync(_client, email);
 
-    private Task<HttpResponseMessage> Login(string email) =>
-        _client.PostAsJsonAsync("/api/auth/login", new { email, password = Password });
+    private List<string> AllowedEmails() =>
+        _factory.Services.GetRequiredService<IOptions<AccessOptions>>().Value.AllowedEmails;
 
     private Task<HttpResponseMessage> Refresh(string? cookieValue) => PostWithCookie("refresh", cookieValue);
 

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Jod.Domain.Interfaces;
 using Jod.Service.Data;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
 namespace Jod.Integration.Tests;
@@ -41,22 +43,29 @@ public sealed class JodWebFactory : WebApplicationFactory<Program>, IAsyncLifeti
         // Note: "Test" keeps the developer's appsettings.Development.json out of the tests
         builder.UseEnvironment("Test");
         builder.ConfigureAppConfiguration((_, configuration) =>
-            configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            configuration.AddInMemoryCollection(AllowedEmailsPool().Concat(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:Default"] = _database.ConnectionString,
                 ["Jwt:SigningKey"] = TestSigningKey,
-                ["Registration:Mode"] = "Open",
+                ["Google:ClientId"] = "test-client-id.apps.googleusercontent.com",
                 // Note: every test shares one IP, so the normal limit of 10 a minute is lifted except in the rate limit tests
                 ["RateLimit:AuthRequestsPerMinute"] = "100000",
                 ["RateLimit:RefreshRequestsPerMinute"] = "100000",
-            }));
+            })));
         builder.ConfigureLogging(logging => logging.AddProvider(new CapturingLoggerProvider(LogEntries)));
         builder.ConfigureServices(services =>
         {
             services.AddControllers().AddApplicationPart(typeof(JodWebFactory).Assembly);
+            // Note: tests cannot call Google, so a fake turns a test credential into the claims of a verified token
+            services.RemoveAll<IGoogleIdTokenVerifier>();
+            services.AddSingleton<IGoogleIdTokenVerifier, FakeGoogleIdTokenVerifier>();
             services.AddTransient<IStartupFilter, TestRemoteIpStartupFilter>();
         });
     }
+
+    private static IEnumerable<KeyValuePair<string, string?>> AllowedEmailsPool() =>
+        Enumerable.Range(0, TestGoogle.PoolSize)
+            .Select(i => new KeyValuePair<string, string?>($"Access:AllowedEmails:{i}", TestGoogle.PoolEmail(i)));
 
     // ExceptionText is the whole exception (message included) so a leak in either place is caught
     public record LogEntry(string Category, LogLevel Level, string Message, string? ExceptionText);

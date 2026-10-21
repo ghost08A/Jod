@@ -6,9 +6,8 @@ namespace Jod.Domain.Interfaces;
 
 public interface IAuthService
 {
-    Task<AuthSessionModel> RegisterAsync(RegisterRequestModel request);
-
-    Task<AuthSessionModel> LoginAsync(LoginRequestModel request);
+    /// <summary>Verifies the Google ID token, checks the allowed list, finds or creates the user and starts a session.</summary>
+    Task<AuthSessionModel> SignInWithGoogleAsync(GoogleSignInRequestModel request);
 
     /// <summary>Swaps a valid refresh token for a new one. Reusing an old token revokes the whole family.</summary>
     Task<AuthSessionModel> RefreshAsync(string? refreshToken);

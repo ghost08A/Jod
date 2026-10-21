@@ -22,6 +22,7 @@ public static class ErrorResponses
         ErrorKind.Unauthorized => StatusCodes.Status401Unauthorized,
         ErrorKind.Forbidden => StatusCodes.Status403Forbidden,
         ErrorKind.Conflict => StatusCodes.Status409Conflict,
+        ErrorKind.Unavailable => StatusCodes.Status503ServiceUnavailable,
         _ => StatusCodes.Status400BadRequest,
     };
 
@@ -63,6 +64,7 @@ public static class ErrorResponses
         StatusCodes.Status405MethodNotAllowed => ("ไม่รองรับคำขอนี้", "ระบบไม่รองรับวิธีเรียกใช้งานนี้"),
         StatusCodes.Status409Conflict => ("ข้อมูลขัดแย้ง", "ข้อมูลขัดแย้งกับที่มีอยู่แล้ว"),
         StatusCodes.Status429TooManyRequests => ("ส่งคำขอถี่เกินไป", "กรุณารอสักครู่แล้วลองใหม่"),
+        StatusCodes.Status503ServiceUnavailable => ("บริการภายนอกไม่พร้อมใช้งาน", "ติดต่อบริการภายนอกไม่ได้ชั่วคราว ลองอีกครั้ง"),
         >= 500 => ("เกิดข้อผิดพลาดในระบบ", "ระบบขัดข้องชั่วคราว ลองใหม่อีกครั้ง หากยังไม่หายให้แจ้งผู้ดูแลพร้อมรหัสอ้างอิง"),
         _ => ("เกิดข้อผิดพลาด", "ไม่สามารถทำรายการได้ ลองใหม่อีกครั้ง"),
     };

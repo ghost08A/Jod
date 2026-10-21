@@ -19,20 +19,11 @@ public class AuthController(IAuthService authService, IWebHostEnvironment enviro
 
     [AllowAnonymous]
     [EnableRateLimiting("auth")]
-    [HttpPost("auth/register")]
-    public async Task<IActionResult> Register(RegisterRequestModel request)
+    [HttpPost("auth/google")]
+    public async Task<IActionResult> SignInWithGoogle(GoogleSignInRequestModel request)
     {
-        var session = await authService.RegisterAsync(request);
-        SetRefreshCookie(session);
-        return StatusCode(StatusCodes.Status201Created, session.Result);
-    }
-
-    [AllowAnonymous]
-    [EnableRateLimiting("auth")]
-    [HttpPost("auth/login")]
-    public async Task<IActionResult> Login(LoginRequestModel request)
-    {
-        var session = await authService.LoginAsync(request);
+        RequireRequestedWithHeader();
+        var session = await authService.SignInWithGoogleAsync(request);
         SetRefreshCookie(session);
         return Ok(session.Result);
     }

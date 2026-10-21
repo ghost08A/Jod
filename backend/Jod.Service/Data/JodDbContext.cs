@@ -1,17 +1,24 @@
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace Jod.Service.Data;
 
-// Note: IdentityUserContext (not IdentityDbContext) because Jod has no roles
-public class JodDbContext(DbContextOptions<JodDbContext> options)
-    : IdentityUserContext<AppUser, Guid>(options)
+public class JodDbContext(DbContextOptions<JodDbContext> options) : DbContext(options)
 {
+    public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        builder.Entity<AppUser>(entity =>
+        {
+            // Google documents "sub" as at most 255 ASCII characters; the unique index is what sign-in looks users up by
+            entity.Property(user => user.GoogleSubject).HasMaxLength(255);
+            entity.HasIndex(user => user.GoogleSubject).IsUnique();
+            // Note: not unique on purpose, an email can move between Google accounts
+            entity.Property(user => user.Email).HasMaxLength(254);
+        });
 
         builder.Entity<RefreshToken>(entity =>
         {

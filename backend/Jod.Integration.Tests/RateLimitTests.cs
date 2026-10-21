@@ -13,10 +13,10 @@ public class RateLimitTests : IClassFixture<JodWebFactory>
 
     public RateLimitTests(JodWebFactory factory) => _factory = factory;
 
-    [Theory]
-    [InlineData("/api/auth/login")]
-    [InlineData("/api/auth/register")]
-    public async Task EleventhRequestInAMinute_IsRejectedWithAProblemAndReference(string path)
+    private const string SignInPath = "/api/auth/google";
+
+    [Fact]
+    public async Task EleventhRequestInAMinute_IsRejectedWithAProblemAndReference()
     {
         // Arrange
         using var limited = WithDefaultLimit();
@@ -26,9 +26,9 @@ public class RateLimitTests : IClassFixture<JodWebFactory>
         var statuses = new List<HttpStatusCode>();
         for (var i = 0; i < 10; i++)
         {
-            statuses.Add((await Post(client, path)).StatusCode);
+            statuses.Add((await Post(client, SignInPath)).StatusCode);
         }
-        var rejected = await Post(client, path);
+        var rejected = await Post(client, SignInPath);
 
         // Assert
         Assert.DoesNotContain(HttpStatusCode.TooManyRequests, statuses);
@@ -47,12 +47,12 @@ public class RateLimitTests : IClassFixture<JodWebFactory>
         var client = limited.CreateClient();
         for (var i = 0; i < 11; i++)
         {
-            await Post(client, "/api/auth/login", ip: "10.0.0.1");
+            await Post(client, SignInPath, ip: "10.0.0.1");
         }
 
         // Act
-        var sameIp = await Post(client, "/api/auth/login", ip: "10.0.0.1");
-        var otherIp = await Post(client, "/api/auth/login", ip: "10.0.0.2");
+        var sameIp = await Post(client, SignInPath, ip: "10.0.0.1");
+        var otherIp = await Post(client, SignInPath, ip: "10.0.0.2");
 
         // Assert
         Assert.Equal(HttpStatusCode.TooManyRequests, sameIp.StatusCode);
@@ -102,7 +102,7 @@ public class RateLimitTests : IClassFixture<JodWebFactory>
     }
 
     [Fact]
-    public async Task LoginBucketFull_DoesNotBlockRenewal()
+    public async Task SignInBucketFull_DoesNotBlockRenewal()
     {
         // Arrange
         using var limited = WithDefaultLimit();
@@ -121,7 +121,7 @@ public class RateLimitTests : IClassFixture<JodWebFactory>
     }
 
     [Fact]
-    public async Task RenewalBucketFull_DoesNotBlockLogin()
+    public async Task RenewalBucketFull_DoesNotBlockSignIn()
     {
         // Arrange
         using var limited = WithDefaultLimit();
@@ -133,10 +133,10 @@ public class RateLimitTests : IClassFixture<JodWebFactory>
         Assert.Equal(HttpStatusCode.TooManyRequests, (await PostRefresh(client)).StatusCode);
 
         // Act
-        var login = await PostEmpty(client);
+        var signIn = await PostEmpty(client);
 
         // Assert
-        Assert.NotEqual(HttpStatusCode.TooManyRequests, login.StatusCode);
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, signIn.StatusCode);
     }
 
     [Fact]
@@ -172,13 +172,14 @@ public class RateLimitTests : IClassFixture<JodWebFactory>
         client.PostAsync("/api/auth/refresh", content: null);
 
     private static Task<HttpResponseMessage> PostEmpty(HttpClient client) =>
-        client.PostAsJsonAsync("/api/auth/login", new { });
+        client.PostAsJsonAsync(SignInPath, new { });
 
     private static Task<HttpResponseMessage> Post(HttpClient client, string path, string? ip = null)
     {
+        // Note: an unusable credential is answered with 401 at once, but the limiter has counted the request already
         var request = new HttpRequestMessage(HttpMethod.Post, path)
         {
-            Content = JsonContent.Create(new { email = $"{Guid.NewGuid():N}@example.com", password = "a-long-enough-password" }),
+            Content = JsonContent.Create(new { credential = TestGoogle.InvalidCredential }),
         };
         if (ip is not null)
         {
