@@ -14,8 +14,7 @@ export type AuthContextValue = {
     user: AuthUser | undefined
     /** True when the user was signed out without asking for it (session expired or revoked) */
     sessionEnded: boolean
-    login: (email: string, password: string) => Promise<void>
-    register: (email: string, password: string) => Promise<void>
+    signInWithGoogle: (credential: string) => Promise<void>
     logout: () => Promise<void>
     retry: () => void
 }

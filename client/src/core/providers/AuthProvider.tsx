@@ -51,12 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, [restoreAttempt])
 
-    const login = useCallback(async (email: string, password: string) => {
-        sessionCoordinator.adopt(await authService.login(email, password))
-    }, [])
-
-    const register = useCallback(async (email: string, password: string) => {
-        sessionCoordinator.adopt(await authService.register(email, password))
+    const signInWithGoogle = useCallback(async (credential: string) => {
+        sessionCoordinator.adopt(await authService.signInWithGoogle(credential))
     }, [])
 
     const logout = useCallback(async () => {
@@ -73,8 +69,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [])
 
     const value = useMemo<AuthContextValue>(
-        () => ({ ...state, login, register, logout, retry }),
-        [state, login, register, logout, retry],
+        () => ({ ...state, signInWithGoogle, logout, retry }),
+        [state, signInWithGoogle, logout, retry],
     )
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

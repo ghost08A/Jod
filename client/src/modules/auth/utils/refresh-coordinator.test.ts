@@ -5,7 +5,7 @@ import { createRefreshCoordinator } from './refresh-coordinator'
 const NOW = 1_000_000
 
 function makeSession(accessToken: string, expiresAt = NOW + 15 * 60_000): AuthSession {
-    return { accessToken, expiresAt, user: { id: '1', email: 'a@example.com', emailConfirmed: false } }
+    return { accessToken, expiresAt, user: { id: '1', email: 'a@example.com' } }
 }
 
 /** One lock shared by everyone who calls it, like Web Locks shared by every tab */

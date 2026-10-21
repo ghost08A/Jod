@@ -20,19 +20,12 @@ function toSession(result: AuthResultResponse): AuthSession {
     }
 }
 
-export async function register(email: string, password: string): Promise<AuthSession> {
-    const result = await requestJson<AuthResultResponse>('/api/auth/register', {
+/** Gives the server the Google ID token as it came from Google. The server checks it and decides who the user is. */
+export async function signInWithGoogle(credential: string): Promise<AuthSession> {
+    const result = await requestJson<AuthResultResponse>('/api/auth/google', {
         method: 'POST',
-        body: { email, password },
-        authorized: false,
-    })
-    return toSession(result)
-}
-
-export async function login(email: string, password: string): Promise<AuthSession> {
-    const result = await requestJson<AuthResultResponse>('/api/auth/login', {
-        method: 'POST',
-        body: { email, password },
+        headers: REQUESTED_WITH,
+        body: { credential },
         authorized: false,
     })
     return toSession(result)
