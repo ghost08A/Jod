@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Jod.Domain;
+using Jod.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,6 +19,33 @@ public class TestErrorController : ControllerBase
         [Required]
         public string? Name { get; set; }
     }
+
+    public const string ConflictPayloadMarker = "conflict-payload-marker-7731";
+
+    // Note: same nesting shape as a Block document, so JSON depth limits are tested the way notes will meet them
+    public class TestBlock
+    {
+        public List<TestBlock> Children { get; set; } = [];
+    }
+
+    public class TestBlocksRequest
+    {
+        public List<TestBlock> Blocks { get; set; } = [];
+    }
+
+    [HttpGet("conflict-with-payload")]
+    public IActionResult ConflictWithPayload() =>
+        throw new CustomError("ข้อมูลถูกแก้จากที่อื่นแล้ว", ErrorKind.Conflict)
+        {
+            Payload = new { version = 7, title = ConflictPayloadMarker, children = new[] { new { version = 1 } } },
+        };
+
+    [HttpGet("conflict-without-payload")]
+    public IActionResult ConflictWithoutPayload() =>
+        throw new CustomError("ข้อมูลขัดแย้ง", ErrorKind.Conflict);
+
+    [HttpPost("blocks")]
+    public IActionResult Blocks(TestBlocksRequest request) => Ok();
 
     [HttpGet("business-error")]
     public IActionResult BusinessError()

@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Configuration;
 
 namespace Jod.Integration.Tests;
 
@@ -155,6 +156,128 @@ public class ErrorContractTests : IClassFixture<JodWebFactory>
         Assert.Matches(ReferencePattern, problem.GetProperty("reference").GetString());
         Assert.NotNull(LogLineFor(problem));
     }
+
+    [Fact]
+    public async Task Conflict_CarriesPayloadAndKeepsReferenceAndProblemShape()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/test-errors/conflict-with-payload");
+
+        // Assert
+        var problem = await ReadProblemAsync(response, HttpStatusCode.Conflict);
+        Assert.Equal(["ข้อมูลถูกแก้จากที่อื่นแล้ว"], ReadErrors(problem));
+        Assert.Matches(ReferencePattern, problem.GetProperty("reference").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(problem.GetProperty("title").GetString()));
+        var payload = problem.GetProperty("payload");
+        Assert.Equal(7, payload.GetProperty("version").GetInt32());
+        Assert.Equal(TestErrorController.ConflictPayloadMarker, payload.GetProperty("title").GetString());
+        Assert.NotNull(LogLineFor(problem));
+    }
+
+    [Fact]
+    public async Task Conflict_PayloadIsNeverWrittenToTheLog()
+    {
+        // Act
+        await _client.GetAsync("/api/test-errors/conflict-with-payload");
+
+        // Assert
+        var everythingLogged = string.Join("\n", _factory.LogEntries.Select(e => $"{e.Message}\n{e.ExceptionText}"));
+        Assert.DoesNotContain(TestErrorController.ConflictPayloadMarker, everythingLogged);
+    }
+
+    [Fact]
+    public async Task OtherErrors_HaveNoPayloadMember()
+    {
+        // Act
+        var conflict = await ReadProblemAsync(
+            await _client.GetAsync("/api/test-errors/conflict-without-payload"), HttpStatusCode.Conflict);
+        var business = await ReadProblemAsync(
+            await _client.GetAsync("/api/test-errors/business-error"), HttpStatusCode.BadRequest);
+        var unexpected = await ReadProblemAsync(
+            await _client.GetAsync("/api/test-errors/unexpected-error"), HttpStatusCode.InternalServerError);
+
+        // Assert
+        Assert.False(conflict.TryGetProperty("payload", out _));
+        Assert.False(business.TryGetProperty("payload", out _));
+        Assert.False(unexpected.TryGetProperty("payload", out _));
+        Assert.Equal(
+            ["detail", "errors", "reference", "status", "title"],
+            business.EnumerateObject().Select(p => p.Name).Order().ToArray());
+    }
+
+    [Fact]
+    public async Task BlocksNested100Levels_AreAccepted()
+    {
+        // Act
+        var response = await _client.PostAsync("/api/test-errors/blocks", NestedBlocks(100));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task BlocksNested101Levels_AreRejectedWhenJsonDepthIsSetToThe100LevelLimit()
+    {
+        // Arrange
+        // Note: 100 block levels = 202 JSON levels in this request shape (object, array, then 2 per block)
+        var client = _factory
+            .WithWebHostBuilder(builder => builder.ConfigureAppConfiguration((_, configuration) =>
+                configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Limits:JsonMaxDepth"] = "202" })))
+            .CreateClient();
+
+        // Act
+        var accepted = await client.PostAsync("/api/test-errors/blocks", NestedBlocks(100));
+        var rejected = await client.PostAsync("/api/test-errors/blocks", NestedBlocks(101));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
+        var problem = await ReadProblemAsync(rejected, HttpStatusCode.BadRequest);
+        Assert.Equal(["ข้อมูลที่ส่งมาไม่ถูกต้อง"], ReadErrors(problem));
+        Assert.Matches(ReferencePattern, problem.GetProperty("reference").GetString());
+    }
+
+    [Fact]
+    public async Task JsonDeeperThanTheDepthLimit_IsRejectedWithThaiMessageAndReference()
+    {
+        // Act
+        var response = await _client.PostAsync("/api/test-errors/blocks", NestedBlocks(300));
+
+        // Assert
+        var problem = await ReadProblemAsync(response, HttpStatusCode.BadRequest);
+        Assert.Equal(["ข้อมูลที่ส่งมาไม่ถูกต้อง"], ReadErrors(problem));
+        Assert.Matches(ReferencePattern, problem.GetProperty("reference").GetString());
+    }
+
+    [Fact]
+    public async Task BodyJustUnder1MB_IsAcceptedAndOver1MB_IsRejectedAsProblemJson()
+    {
+        // Arrange
+        const int limit = 1_048_576;
+        const int envelopeBytes = 11; // {"name":""}
+
+        // Act
+        var accepted = await _client.PostAsync("/api/test-errors/validate", NameBody(limit - envelopeBytes));
+        var rejected = await _client.PostAsync("/api/test-errors/validate", NameBody(limit - envelopeBytes + 1));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
+        var problem = await ReadProblemAsync(rejected, HttpStatusCode.RequestEntityTooLarge);
+        Assert.Equal(["ข้อมูลที่ส่งมามีขนาดใหญ่เกินกำหนด"], ReadErrors(problem));
+        Assert.Matches(ReferencePattern, problem.GetProperty("reference").GetString());
+        Assert.NotNull(LogLineFor(problem));
+    }
+
+    private static StringContent NestedBlocks(int levels)
+    {
+        var json = $"{{\"blocks\":[{string.Concat(Enumerable.Repeat("{\"children\":[", levels))}"
+            + $"{string.Concat(Enumerable.Repeat("]}", levels))}]}}";
+        return new StringContent(json, Encoding.UTF8, "application/json");
+    }
+
+    private static string NameJson(int nameLength) => $"{{\"name\":\"{new string('a', nameLength)}\"}}";
+
+    private static StringContent NameBody(int nameLength) =>
+        new(NameJson(nameLength), Encoding.UTF8, "application/json");
 
     private async Task<HttpClient> SignedInClientAsync()
     {

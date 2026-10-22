@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toApiError, toConnectionError } from './api-error'
+import { toApiError, toConnectionError, toTimeoutError } from './api-error'
 
 describe('toApiError', () => {
     it('prefers the specific messages in "errors" and keeps the reference', () => {
@@ -48,5 +48,38 @@ describe('toConnectionError', () => {
 
         expect(error.status).toBe(0)
         expect(error.message).toContain('เชื่อมต่อ')
+    })
+})
+
+describe('toApiError extensions', () => {
+    it('keeps unknown members of the body and leaves out the standard ones', () => {
+        const error = toApiError(409, {
+            type: 't',
+            title: 'x',
+            status: 409,
+            detail: 'd',
+            instance: '/i',
+            reference: 'AB23CD45',
+            errors: ['e'],
+            currentNote: { id: 'n1' },
+            other: 5,
+        })
+
+        expect(error.extensions).toEqual({ currentNote: { id: 'n1' }, other: 5 })
+        expect(error.message).toBe('e')
+        expect(error.reference).toBe('AB23CD45')
+        expect(error.status).toBe(409)
+    })
+
+    it('has empty extensions when there is nothing extra or no object body', () => {
+        expect(toApiError(400, { detail: 'd' }).extensions).toEqual({})
+        expect(toApiError(502, 'html').extensions).toEqual({})
+    })
+})
+
+describe('toTimeoutError', () => {
+    it('is transient, status 408, unlike the connection error', () => {
+        expect(toTimeoutError()).toMatchObject({ status: 408, transient: true })
+        expect(toConnectionError().transient).toBe(false)
     })
 })

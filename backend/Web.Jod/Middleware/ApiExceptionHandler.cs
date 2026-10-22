@@ -1,4 +1,5 @@
 using Jod.Domain;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Web.Jod.Middleware;
 
@@ -39,7 +40,21 @@ public class ApiExceptionHandler(RequestDelegate next, ILogger<ApiExceptionHandl
     {
         if (exception is CustomError customError)
         {
-            return WriteProblemAsync(context, ErrorResponses.StatusFor(customError.Kind), customError.Messages, nameof(CustomError));
+            return WriteProblemAsync(context, ErrorResponses.StatusFor(customError.Kind), customError.Messages, nameof(CustomError),
+                payload: customError.Payload);
+        }
+
+        if (exception is BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge })
+        {
+            // Note: the request body went over the size limit set in Program.cs
+            return WriteProblemAsync(context, StatusCodes.Status413PayloadTooLarge, ["ข้อมูลที่ส่งมามีขนาดใหญ่เกินกำหนด"], "RequestBodyTooLarge");
+        }
+
+        if (exception is InvalidOperationException && exception.TargetSite?.DeclaringType == typeof(ModelStateDictionary))
+        {
+            // Note: a bad JSON body nested deeper than 32 levels (including over the JSON depth limit) makes MVC fail
+            // while recording the error, because ModelState keys have a fixed depth limit. It is still the client's bad data
+            return WriteProblemAsync(context, StatusCodes.Status400BadRequest, [ErrorResponses.InvalidDataMessage], nameof(CustomError));
         }
 
         // Note: Message is deliberately left out, the type and stack trace are enough to find the cause
@@ -48,7 +63,8 @@ public class ApiExceptionHandler(RequestDelegate next, ILogger<ApiExceptionHandl
     }
 
     private async Task WriteProblemAsync(
-        HttpContext context, int status, IReadOnlyList<string>? errors, string errorType, string? stackTrace = null)
+        HttpContext context, int status, IReadOnlyList<string>? errors, string errorType, string? stackTrace = null,
+        object? payload = null)
     {
         var reference = ErrorResponses.NewReference();
         var endpoint = context.GetEndpoint() is RouteEndpoint route
@@ -60,7 +76,7 @@ public class ApiExceptionHandler(RequestDelegate next, ILogger<ApiExceptionHandl
             "Request failed {Reference} {Status} {ErrorType} at {Endpoint} {StackTrace}",
             reference, status, errorType, endpoint, stackTrace);
 
-        await ErrorResponses.WriteAsync(context, ErrorResponses.Create(status, reference, errors));
+        await ErrorResponses.WriteAsync(context, ErrorResponses.Create(status, reference, errors, payload));
     }
 
     private static bool HasNoBody(HttpResponse response) =>

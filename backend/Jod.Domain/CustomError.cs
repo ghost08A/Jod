@@ -6,6 +6,8 @@ public class CustomError : Exception
 {
     public List<string> Messages { get; } = [];
     public ErrorKind Kind { get; init; } = ErrorKind.Validation;
+    // Note: extra data written into the problem+json as `payload` (for example the current Note in a 409). Never logged
+    public object? Payload { get; init; }
     public override string Message => string.Join(", ", Messages);
 
     public CustomError() { }
