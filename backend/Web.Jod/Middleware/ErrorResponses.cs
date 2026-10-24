@@ -24,6 +24,7 @@ public static class ErrorResponses
         ErrorKind.Unauthorized => StatusCodes.Status401Unauthorized,
         ErrorKind.Forbidden => StatusCodes.Status403Forbidden,
         ErrorKind.Conflict => StatusCodes.Status409Conflict,
+        ErrorKind.NotFound => StatusCodes.Status404NotFound,
         ErrorKind.Unavailable => StatusCodes.Status503ServiceUnavailable,
         _ => StatusCodes.Status400BadRequest,
     };
