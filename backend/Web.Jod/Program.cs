@@ -56,10 +56,19 @@ builder.Services.AddOptions<AccessOptions>()
         "Access:AllowedEmails must only hold valid email addresses.")
     .ValidateOnStart();
 
+builder.Services.AddOptions<NoteOptions>()
+    .Bind(builder.Configuration.GetSection(NoteOptions.SectionName))
+    .Validate(notes => notes.TitleMaxLength is > 0 and <= 200 && notes.ContextMaxLength is > 0 and <= 2000,
+        "Notes:TitleMaxLength (at most 200) and Notes:ContextMaxLength (at most 2000) must be set; the database columns hold no more.")
+    .Validate(notes => notes.ContentMaxBytes > 0 && notes.MaxBlockDepth > 0,
+        "Notes:ContentMaxBytes and Notes:MaxBlockDepth must be greater than 0.")
+    .ValidateOnStart();
+
 builder.Services.AddSingleton(TimeProvider.System);
 // Note: stateless (Google's public keys are cached inside the library), so one instance is enough
 builder.Services.AddSingleton<IGoogleIdTokenVerifier, GoogleIdTokenVerifier>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<INoteService, NoteService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
@@ -118,10 +127,10 @@ if (app.Services.GetRequiredService<IOptions<AccessOptions>>().Value.AllowedEmai
 
 // Note: must stay first so it can answer for every other middleware
 app.UseMiddleware<ApiExceptionHandler>();
-// Note: request body limit in bytes (1 MB), answered as 413 problem+json by the handler above. Kestrel enforces the
+// Note: request body limit in bytes (1.25 MiB: a note's content may be 1 MiB plus the title, context and JSON around it), answered as 413 problem+json by the handler above. Kestrel enforces the
 // feature limit while the body is read (also for bodies without Content-Length); the Content-Length check refuses
 // a declared oversize body up front and also works on hosts that ignore the feature (the test server).
-var maxRequestBodyBytes = app.Configuration.GetValue("Limits:RequestBodyMaxBytes", 1_048_576L);
+var maxRequestBodyBytes = app.Configuration.GetValue("Limits:RequestBodyMaxBytes", 1_310_720L);
 app.Use((context, next) =>
 {
     if (context.Request.ContentLength > maxRequestBodyBytes)
