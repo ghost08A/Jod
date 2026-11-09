@@ -20,13 +20,23 @@
     --color-accent: #6cb3f5; /* 7.9:1 on bg */
     --color-accent-hover: #8bc4f8;
     --color-accent-active: #5aa2e4;
-    --color-on-accent: #0b1f33; /* 7.5:1 on accent */
+    --color-on-accent: #0b1f33; /* 7.5:1 on accent, 9.0:1 on accent-hover, 6.1:1 on accent-active */
     --color-disabled-bg: #3a3a3a;
-    --color-disabled-text: #8f8f8f;
+    --color-disabled-text: #8f8f8f; /* 3.5:1 on disabled-bg. Disabled controls are exempt from AA, shown here for the record */
 
     --color-danger: #ff9b9b; /* 8.7:1 on bg */
-    --color-danger-bg: #2d1f1f;
+    --color-danger-bg: #2d1f1f; /* danger text on it 7.9:1 */
     --color-notice-bg: #1f2a36;
+
+    /* Notes workspace. Ratios (WCAG 2.1) were computed with the relative-luminance formula, not estimated */
+    --color-sidebar-bg: #1f1f1f; /* text 13.2:1, muted 6.9:1, accent 7.4:1, danger 8.2:1, border 4.8:1, placeholder 5.9:1 on it */
+    --color-row-hover-bg: #2c2c2c; /* text 11.2:1, muted 5.9:1, accent 6.3:1, accent-hover 7.6:1, placeholder 5.0:1, border 4.1:1 on it */
+    --color-row-selected-bg: #363636; /* text 9.7:1, accent 5.4:1. The open note is also bold with an accent bar, never color alone */
+    --color-row-active-bg: #3c3c3c; /* pressed state. text 8.8:1, muted 4.6:1, accent 4.9:1, border 3.2:1 on it */
+    --color-backdrop: rgb(0 0 0 / 60%); /* dims the page behind the drawer, carries no text */
+    --sidebar-width: 300px;
+    --content-max-width: 600px;
+    --drawer-transition: 0.2s ease;
 
     --font-sans: system-ui, 'Segoe UI', 'Noto Sans Thai', Roboto, sans-serif;
     --font-display: 'Anuphan Variable', var(--font-sans);
@@ -90,7 +100,81 @@ a:active {
 
 a:focus-visible,
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+textarea:focus-visible {
     outline: var(--focus-ring);
     outline-offset: 2px;
+}
+
+.button-primary {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 44px;
+    padding: var(--space-3) var(--space-5);
+    font: inherit;
+    font-weight: 600;
+    color: var(--color-on-accent);
+    background: var(--color-accent);
+    border: 0;
+    border-radius: var(--radius);
+    cursor: pointer;
+}
+
+.button-primary:hover {
+    background: var(--color-accent-hover);
+}
+
+.button-primary:active {
+    background: var(--color-accent-active);
+}
+
+.button-primary:disabled {
+    color: var(--color-disabled-text);
+    background: var(--color-disabled-bg);
+    cursor: not-allowed;
+}
+
+.spinner {
+    width: 1em;
+    height: 1em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.skeleton {
+    display: block;
+    height: 1.2em;
+    width: 60%;
+    background: var(--color-disabled-bg);
+    border-radius: var(--space-1);
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton-title {
+    height: 1.6rem;
+    width: 40%;
+    margin-bottom: var(--space-5);
+}
+
+@keyframes pulse {
+    50% {
+        opacity: 0.5;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .spinner,
+    .skeleton {
+        animation: none;
+    }
 }

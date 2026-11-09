@@ -1,0 +1,53 @@
+import { useRef, useState } from 'react'
+import { useNavigate } from 'react-router'
+import { ApiError, toApiError } from '../../../core/http/api-error'
+import { createNote } from '../services/note-service'
+import { buildNotePath } from '../utils/shell/note-path'
+
+type NewNoteButtonProps = {
+    /** Called after the note exists and its page is open, so the list can refresh */
+    onCreated: () => void
+}
+
+export function NewNoteButton({ onCreated }: NewNoteButtonProps) {
+    const navigate = useNavigate()
+    const [isCreating, setIsCreating] = useState(false)
+    const [error, setError] = useState<ApiError | undefined>(undefined)
+    // Note: the ref stops a quick double click, because the disabled state only changes after the next render
+    const isCreatingRef = useRef(false)
+
+    async function handleCreate() {
+        if (isCreatingRef.current) return
+        isCreatingRef.current = true
+        setError(undefined)
+        setIsCreating(true)
+        try {
+            const note = await createNote()
+            navigate(buildNotePath(note.id))
+            onCreated()
+        } catch (failure) {
+            setError(failure instanceof ApiError ? failure : toApiError(0, undefined))
+        } finally {
+            isCreatingRef.current = false
+            setIsCreating(false)
+        }
+    }
+
+    return (
+        <div className="notes-new-note">
+            <button className="button-primary notes-new-note-button" type="button" onClick={handleCreate} disabled={isCreating} aria-busy={isCreating}>
+                {isCreating && <span className="spinner" aria-hidden="true" />}
+                {isCreating ? 'กำลังสร้าง…' : 'New note'}
+            </button>
+            {error && (
+                <div className="notes-error" role="alert">
+                    <p>{error.message}</p>
+                    {error.reference && <p className="notes-error-reference">รหัสอ้างอิง: {error.reference}</p>}
+                    <button className="notes-secondary-button" type="button" onClick={handleCreate} disabled={isCreating}>
+                        ลองอีกครั้ง
+                    </button>
+                </div>
+            )}
+        </div>
+    )
+}

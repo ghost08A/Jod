@@ -1,0 +1,310 @@
+.notes-workspace {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar: wide screens show it beside the page, narrow screens (see the media query at the end) make it a drawer */
+.notes-sidebar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    flex: none;
+    gap: var(--space-4);
+    width: var(--sidebar-width);
+    height: 100vh;
+    padding: var(--space-4);
+    background: var(--color-sidebar-bg);
+}
+
+.notes-sidebar[data-open='false'] {
+    display: none;
+}
+
+.notes-sidebar-header {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+}
+
+.notes-new-note {
+    flex: 1;
+    min-width: 0;
+}
+
+.notes-new-note-button {
+    width: 100%;
+}
+
+.notes-new-note .notes-error {
+    margin-top: var(--space-3);
+}
+
+.notes-sidebar-nav {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.notes-sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.notes-account-link {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Note list */
+.notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.notes-list-skeleton {
+    width: 100%;
+    height: 2.5rem;
+}
+
+.notes-list-link {
+    display: block;
+    min-height: 44px;
+    padding: var(--space-3);
+    overflow: hidden;
+    color: var(--color-text);
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border-radius: var(--radius);
+    cursor: pointer;
+}
+
+.notes-list-link:hover {
+    color: var(--color-text);
+    background: var(--color-row-hover-bg);
+}
+
+.notes-list-link:active {
+    color: var(--color-text);
+    background: var(--color-row-active-bg);
+}
+
+/* The open note: background plus bold plus an accent bar, so it is not shown by color alone */
+.notes-list-link[aria-current='page'] {
+    font-weight: 600;
+    background: var(--color-row-selected-bg);
+    box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.notes-list-link[aria-current='page']:hover,
+.notes-list-link[aria-current='page']:active {
+    background: var(--color-row-active-bg);
+}
+
+.notes-list-empty {
+    padding: var(--space-3);
+    color: var(--color-text-muted);
+}
+
+/* Buttons that are not the main action. The main action uses .button-primary from index.css */
+.notes-secondary-button,
+.notes-icon-button {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--space-2) var(--space-4);
+    font: inherit;
+    color: var(--color-text);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    cursor: pointer;
+}
+
+/* The edge of a button with a visible outline must reach 3:1 against what is behind it (4.8:1 on the sidebar) */
+.notes-secondary-button {
+    border-color: var(--color-border);
+}
+
+.notes-icon-button {
+    padding: var(--space-2);
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.notes-secondary-button:hover,
+.notes-icon-button:hover {
+    background: var(--color-row-hover-bg);
+}
+
+.notes-secondary-button:active,
+.notes-icon-button:active {
+    background: var(--color-row-active-bg);
+}
+
+.notes-secondary-button:disabled {
+    color: var(--color-disabled-text);
+    background: var(--color-disabled-bg);
+    border-color: transparent;
+    cursor: not-allowed;
+}
+
+/* Errors */
+.notes-error {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    color: var(--color-danger);
+    background: var(--color-danger-bg);
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius);
+}
+
+.notes-error-reference {
+    font-size: 0.875rem;
+}
+
+/* The writing area: no card, no border, no divider */
+.notes-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notes-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-bg);
+}
+
+.notes-main {
+    padding: var(--space-4) var(--space-7) var(--space-8);
+}
+
+.notes-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-width: var(--content-max-width);
+}
+
+.notes-empty-state,
+.notes-page-message {
+    color: var(--color-text-muted);
+}
+
+.notes-page-skeleton-title {
+    width: 60%;
+    height: 2.5rem;
+    margin-bottom: var(--space-3);
+}
+
+.notes-page-skeleton-body {
+    width: 80%;
+    height: 6rem;
+}
+
+.notes-title,
+.notes-context {
+    width: 100%;
+    padding: var(--space-1) var(--space-2);
+    margin-left: calc(var(--space-2) * -1);
+    font: inherit;
+    color: var(--color-text);
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius);
+    cursor: text;
+}
+
+.notes-title {
+    font-family: var(--font-display);
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.notes-context {
+    display: block;
+    overflow: hidden;
+    color: var(--color-text-muted);
+    resize: none;
+}
+
+.notes-title:hover,
+.notes-context:hover {
+    background: var(--color-row-hover-bg);
+}
+
+.notes-context:focus {
+    color: var(--color-text);
+}
+
+.notes-title::placeholder,
+.notes-context::placeholder {
+    color: var(--color-placeholder);
+}
+
+.notes-body-placeholder {
+    margin-top: var(--space-4);
+    color: var(--color-placeholder);
+    user-select: none;
+}
+
+/* Drawer */
+.notes-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    background: var(--color-backdrop);
+}
+
+/* Note: 768px is DRAWER_MAX_WIDTH_PX in utils/shell/drawer-breakpoint.ts. Change both together */
+@media (max-width: 768px) {
+    .notes-sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        z-index: 20;
+        width: min(var(--sidebar-width), 85vw);
+        height: 100dvh;
+        transition: transform var(--drawer-transition);
+    }
+
+    /* Closed drawer: slid away and hidden, but kept in the page so the note list is not loaded again on every open */
+    .notes-sidebar[data-open='false'] {
+        display: flex;
+        visibility: hidden;
+        transform: translateX(-100%);
+        transition:
+            transform var(--drawer-transition),
+            visibility 0s linear 0.2s;
+    }
+
+    .notes-main {
+        padding: var(--space-4) var(--space-4) var(--space-7);
+    }
+
+    .notes-title {
+        font-size: 1.75rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .notes-sidebar,
+    .notes-sidebar[data-open='false'] {
+        transition: none;
+    }
+}
