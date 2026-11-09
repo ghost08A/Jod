@@ -5,10 +5,17 @@
     /* Surfaces and text. Contrast ratios against the surface they sit on are noted for WCAG AA. */
     --color-bg: #191919;
     --color-surface: #202020;
+    --color-surface-raised: #272727;
     --color-text: #e6e6e6; /* 14.1:1 on bg */
     --color-text-muted: #a8a8a8; /* 7.4:1 on bg */
     --color-placeholder: #9a9a9a; /* 6.3:1 on bg */
     --color-border: #8a8a8a; /* 4.7:1 on surface, above the 3:1 needed for input edges */
+    --color-hairline: #323232; /* dividers and quiet outlines, decoration only */
+
+    /* Note: sticker colors only mark categories in illustrations; they never paint an action or structure */
+    --color-sticker-orange: #f0873a;
+    --color-sticker-green: #3fc25c;
+    --color-sticker-purple: #c9a6f2;
 
     --color-accent: #6cb3f5; /* 7.9:1 on bg */
     --color-accent-hover: #8bc4f8;
@@ -22,6 +29,7 @@
     --color-notice-bg: #1f2a36;
 
     --font-sans: system-ui, 'Segoe UI', 'Noto Sans Thai', Roboto, sans-serif;
+    --font-display: 'Anuphan Variable', var(--font-sans);
     --font-size-base: 16px;
     --line-height-base: 1.6;
 
@@ -31,6 +39,8 @@
     --space-4: 16px;
     --space-5: 24px;
     --space-6: 32px;
+    --space-7: 48px;
+    --space-8: 64px;
     --radius: 8px;
     --focus-ring: 2px solid var(--color-accent);
 

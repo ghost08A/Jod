@@ -1,7 +1,7 @@
 import type { GoogleAccountsId } from '../types/google-identity'
 
 const SCRIPT_URL = 'https://accounts.google.com/gsi/client'
-const BUTTON_WIDTH = 280
+const BUTTON_WIDTH = 320
 
 let scriptPromise: Promise<GoogleAccountsId> | undefined
 let credentialHandler: ((credential: string) => void) | undefined
@@ -56,7 +56,7 @@ export async function renderGoogleSignInButton(
 
     identity.renderButton(parent, {
         type: 'standard',
-        theme: 'filled_black',
+        theme: 'outline',
         size: 'large',
         text: 'signin_with',
         shape: 'rectangular',
