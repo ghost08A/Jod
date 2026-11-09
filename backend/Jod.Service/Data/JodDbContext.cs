@@ -6,6 +6,7 @@ public class JodDbContext(DbContextOptions<JodDbContext> options) : DbContext(op
 {
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<Note> Notes => Set<Note>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -29,6 +30,20 @@ public class JodDbContext(DbContextOptions<JodDbContext> options) : DbContext(op
             entity.HasOne<AppUser>()
                 .WithMany()
                 .HasForeignKey(token => token.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<Note>(entity =>
+        {
+            // Note: lengths are in characters; the code point limits (200 / 2000) are checked in NoteContentValidator
+            entity.Property(note => note.Title).HasMaxLength(200);
+            entity.Property(note => note.Context).HasMaxLength(2000);
+            entity.Property(note => note.Content).HasColumnType("jsonb");
+            // The note list of one user, newest change first
+            entity.HasIndex(note => new { note.OwnerId, note.UpdatedAt });
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(note => note.OwnerId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

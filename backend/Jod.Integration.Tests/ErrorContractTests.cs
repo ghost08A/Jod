@@ -249,10 +249,10 @@ public class ErrorContractTests : IClassFixture<JodWebFactory>
     }
 
     [Fact]
-    public async Task BodyJustUnder1MB_IsAcceptedAndOver1MB_IsRejectedAsProblemJson()
+    public async Task BodyJustUnderTheLimit_IsAcceptedAndOverTheLimit_IsRejectedAsProblemJson()
     {
         // Arrange
-        const int limit = 1_048_576;
+        const int limit = 1_310_720;
         const int envelopeBytes = 11; // {"name":""}
 
         // Act
