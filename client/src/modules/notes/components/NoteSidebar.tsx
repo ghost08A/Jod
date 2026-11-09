@@ -1,0 +1,140 @@
+import { useEffect, useState, type RefObject } from 'react'
+import { Link } from 'react-router'
+import { ApiError, toApiError } from '../../../core/http/api-error'
+import { useAuth } from '../../auth/hooks/useAuth'
+import { useCurrentUser } from '../../auth/hooks/useCurrentUser'
+import { useNoteList } from '../hooks/useNoteList'
+import { nextFocusIndex } from '../utils/shell/next-focus-index'
+import { NewNoteButton } from './NewNoteButton'
+import { NoteList } from './NoteList'
+
+const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled])'
+
+type NoteSidebarProps = {
+    isDrawer: boolean
+    isOpen: boolean
+    /** The element that opened the drawer, which gets focus back when the drawer closes */
+    openerRef: RefObject<HTMLElement | null>
+    /** Closes the drawer. Must keep the same identity between renders */
+    onClose: () => void
+}
+
+export function NoteSidebar({ isDrawer, isOpen, openerRef, onClose }: NoteSidebarProps) {
+    const [panel, setPanel] = useState<HTMLElement | null>(null)
+    const { items, error, isLoading, refresh, retry } = useNoteList()
+    const isModal = isDrawer && isOpen
+    useDrawerBehavior(isModal ? panel : null, openerRef, onClose)
+
+    // Note: choosing a note or creating one closes the drawer; on a wide screen nothing closes
+    function handleNavigated() {
+        if (isDrawer) onClose()
+    }
+
+    return (
+        <aside
+            id="notes-sidebar"
+            ref={setPanel}
+            className="notes-sidebar"
+            data-open={isOpen}
+            aria-label="รายการโน้ต"
+            role={isModal ? 'dialog' : undefined}
+            aria-modal={isModal || undefined}
+            inert={!isOpen}
+        >
+            <div className="notes-sidebar-header">
+                <NewNoteButton
+                    onCreated={() => {
+                        refresh()
+                        handleNavigated()
+                    }}
+                />
+                {isDrawer && (
+                    <button className="notes-icon-button" type="button" onClick={onClose} aria-label="ปิดแถบข้าง">
+                        ×
+                    </button>
+                )}
+            </div>
+            <nav className="notes-sidebar-nav" aria-label="โน้ตของฉัน">
+                <NoteList items={items} error={error} isLoading={isLoading} onRetry={retry} onSelect={handleNavigated} />
+            </nav>
+            <SidebarFooter />
+        </aside>
+    )
+}
+
+/** While the drawer is open (panel is set): Escape closes it, Tab stays inside, the page behind cannot scroll, focus goes back to the opener */
+function useDrawerBehavior(panel: HTMLElement | null, openerRef: RefObject<HTMLElement | null>, onClose: () => void) {
+    useEffect(() => {
+        if (!panel) return
+        const opener = openerRef.current
+        const getFocusable = () => Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+
+        getFocusable()[0]?.focus()
+        const previousOverflow = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === 'Escape') {
+                event.preventDefault()
+                onClose()
+                return
+            }
+            if (event.key !== 'Tab') return
+            const focusable = getFocusable()
+            const currentIndex = focusable.findIndex((element) => element === document.activeElement)
+            const nextIndex = nextFocusIndex(focusable.length, currentIndex, event.shiftKey)
+            event.preventDefault()
+            focusable[nextIndex]?.focus()
+        }
+        document.addEventListener('keydown', handleKeyDown)
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown)
+            document.body.style.overflow = previousOverflow
+            opener?.focus()
+        }
+    }, [panel, openerRef, onClose])
+}
+
+// Note: the sign-out handling mirrors AccountPage (same useAuth().logout, same error and spinner behavior)
+function SidebarFooter() {
+    const { logout } = useAuth()
+    const { user, error } = useCurrentUser()
+    const [isSigningOut, setIsSigningOut] = useState(false)
+    const [signOutError, setSignOutError] = useState<ApiError | undefined>(undefined)
+
+    async function handleSignOut() {
+        setSignOutError(undefined)
+        setIsSigningOut(true)
+        try {
+            await logout()
+        } catch (failure) {
+            setSignOutError(failure instanceof ApiError ? failure : toApiError(0, undefined))
+            setIsSigningOut(false)
+        }
+    }
+
+    const shownError = error ?? signOutError
+
+    return (
+        <div className="notes-sidebar-footer">
+            {user ? (
+                <Link className="notes-account-link" to="/account">
+                    {user.email}
+                </Link>
+            ) : (
+                !error && <span className="skeleton" aria-label="กำลังโหลด" role="status" />
+            )}
+            {shownError && (
+                <div className="notes-error" role="alert">
+                    <p>{shownError.message}</p>
+                    {shownError.reference && <p className="notes-error-reference">รหัสอ้างอิง: {shownError.reference}</p>}
+                </div>
+            )}
+            <button className="notes-secondary-button" type="button" onClick={handleSignOut} disabled={isSigningOut} aria-busy={isSigningOut}>
+                {isSigningOut && <span className="spinner" aria-hidden="true" />}
+                {isSigningOut ? 'กำลังออกจากระบบ…' : 'ออกจากระบบ'}
+            </button>
+        </div>
+    )
+}
