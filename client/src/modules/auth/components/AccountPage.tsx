@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { ApiError, toApiError } from '../../../core/http/api-error'
 import { useAuth } from '../hooks/useAuth'
 import { useCurrentUser } from '../hooks/useCurrentUser'
@@ -48,6 +49,9 @@ export function AccountPage() {
                     {isSigningOut && <span className="spinner" aria-hidden="true" />}
                     {isSigningOut ? 'กำลังออกจากระบบ…' : 'ออกจากระบบ'}
                 </button>
+                <Link className="account-back-link" to="/">
+                    กลับไปโน้ต
+                </Link>
             </div>
         </main>
     )

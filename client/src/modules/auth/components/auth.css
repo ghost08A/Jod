@@ -70,3 +70,9 @@
 .account-value {
     overflow-wrap: anywhere;
 }
+
+.account-back-link {
+    display: block;
+    width: fit-content;
+    margin-top: var(--space-5);
+}
