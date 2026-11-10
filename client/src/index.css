@@ -40,6 +40,7 @@
 
     --font-sans: system-ui, 'Segoe UI', 'Noto Sans Thai', Roboto, sans-serif;
     --font-display: 'Anuphan Variable', var(--font-sans);
+    --font-mono: ui-monospace, 'Cascadia Mono', Consolas, 'Noto Sans Mono', monospace;
     --font-size-base: 16px;
     --line-height-base: 1.6;
 

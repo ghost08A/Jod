@@ -1,4 +1,5 @@
 import {
+    createEmptyNoteDocument,
     type HeadingLevel,
     type NoteBlock,
     type NoteDocument,
@@ -168,10 +169,18 @@ function convertBlocksToTipTapNodes(blocks: readonly NoteBlock[]): TipTapNode[] 
     return nodes
 }
 
-export function noteDocumentToTipTap(document: NoteDocument): TipTapDocument {
+/**
+ * A TipTap document needs at least one block, so a Jod document without blocks becomes one empty paragraph
+ * with a new id. The reverse keeps that paragraph: it comes back as a paragraph block with text "".
+ */
+export function noteDocumentToTipTap(
+    document: NoteDocument,
+    generateId: IdGenerator = defaultGenerateBlockId,
+): TipTapDocument {
+    const source = document.blocks.length > 0 ? document : createEmptyNoteDocument(generateId)
     return {
         type: 'doc',
-        content: convertBlocksToTipTapNodes(document.blocks),
+        content: convertBlocksToTipTapNodes(source.blocks),
     }
 }
 
