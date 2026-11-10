@@ -5,6 +5,8 @@ import { UniqueID } from '@tiptap/extension-unique-id'
 import { StarterKit } from '@tiptap/starter-kit'
 import type { HeadingLevel } from './block-document'
 import { defaultGenerateBlockId } from './block-id'
+import { NestingKeys } from './nesting-keys'
+import { SlashCommand, type SlashMenuRenderer } from './slash-command-extension'
 
 const HEADING_LEVELS: HeadingLevel[] = [1, 2, 3]
 
@@ -110,7 +112,8 @@ const KeyboardDetails = Details.extend({
     },
 })
 
-export function createNoteEditorExtensions(): Extensions {
+/** renderSlashMenu draws the "/" menu; without it the menu still works but shows nothing (as in tests) */
+export function createNoteEditorExtensions(renderSlashMenu?: SlashMenuRenderer): Extensions {
     return [
         RestrictedStarterKit.configure({
             // Note: block text is plain text, so every mark and the line break inside a paragraph are off
@@ -154,5 +157,7 @@ export function createNoteEditorExtensions(): Extensions {
             // Note: a wrapper, because UniqueID passes a context object that generateBlockId would take as its generator
             generateID: () => defaultGenerateBlockId(),
         }),
+        SlashCommand.configure({ render: renderSlashMenu }),
+        NestingKeys,
     ]
 }
