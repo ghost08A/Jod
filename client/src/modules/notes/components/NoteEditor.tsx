@@ -13,9 +13,11 @@ type NoteEditorProps = {
     content: unknown
     /** Called after every edit with the whole document, block ids made unique */
     onDocumentChange?: (document: NoteDocument) => void
+    /** Shows the content only, without a cursor, hint or editing tools */
+    isReadOnly?: boolean
 }
 
-export function NoteEditor({ content, onDocumentChange }: NoteEditorProps) {
+export function NoteEditor({ content, onDocumentChange, isReadOnly }: NoteEditorProps) {
     const [initialDocument] = useState(() => (isNoteDocument(content) ? content : undefined))
 
     if (!initialDocument) {
@@ -27,16 +29,17 @@ export function NoteEditor({ content, onDocumentChange }: NoteEditorProps) {
         )
     }
 
-    return <NoteEditorSurface initialDocument={initialDocument} onDocumentChange={onDocumentChange} />
+    return <NoteEditorSurface initialDocument={initialDocument} onDocumentChange={onDocumentChange} isReadOnly={isReadOnly} />
 }
 
 type NoteEditorSurfaceProps = {
     initialDocument: NoteDocument
     onDocumentChange?: (document: NoteDocument) => void
+    isReadOnly?: boolean
 }
 
-function NoteEditorSurface({ initialDocument, onDocumentChange }: NoteEditorSurfaceProps) {
-    const { editor, isEmpty, slashMenu } = useNoteEditor({ initialDocument, onDocumentChange })
+function NoteEditorSurface({ initialDocument, onDocumentChange, isReadOnly }: NoteEditorSurfaceProps) {
+    const { editor, isEmpty, slashMenu } = useNoteEditor({ initialDocument, onDocumentChange, isReadOnly })
     const slashListId = useId()
     const status = useEditorState({
         editor,
@@ -64,7 +67,7 @@ function NoteEditorSurface({ initialDocument, onDocumentChange }: NoteEditorSurf
 
     return (
         <div className="notes-editor">
-            {isEmpty && (
+            {isEmpty && !isReadOnly && (
                 <p className="notes-editor-hint" aria-hidden="true">
                     พิมพ์เนื้อหาที่นี่…
                 </p>

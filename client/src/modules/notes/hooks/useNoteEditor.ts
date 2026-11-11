@@ -62,10 +62,12 @@ function toNoteDocument(json: JSONContent): NoteDocument {
 type UseNoteEditorOptions = {
     initialDocument: NoteDocument
     onDocumentChange?: (document: NoteDocument) => void
+    /** Shows the text without letting it be changed or taking focus (the conflict page) */
+    isReadOnly?: boolean
 }
 
 /** Creates the TipTap editor once for the opened note; it is destroyed when the component unmounts */
-export function useNoteEditor({ initialDocument, onDocumentChange }: UseNoteEditorOptions) {
+export function useNoteEditor({ initialDocument, onDocumentChange, isReadOnly = false }: UseNoteEditorOptions) {
     // Note: read once. NotePage remounts this per note (key={note.id}), so another note never shows stale content
     const [startsEmpty] = useState(() => isEmptyNoteDocument(initialDocument))
     const [content] = useState(() => noteDocumentToTipTap(initialDocument))
@@ -77,7 +79,8 @@ export function useNoteEditor({ initialDocument, onDocumentChange }: UseNoteEdit
         extensions,
         content,
         // Note: only an empty note takes the cursor, so opening a note with content does not steal focus
-        autofocus: startsEmpty ? 'start' : false,
+        editable: !isReadOnly,
+        autofocus: startsEmpty && !isReadOnly ? 'start' : false,
         editorProps: NOTE_EDITOR_PROPS,
         onUpdate: ({ editor: currentEditor, transaction }) => {
             // Note: UniqueID fills missing ids right after creation with addToHistory false; that is not an edit
