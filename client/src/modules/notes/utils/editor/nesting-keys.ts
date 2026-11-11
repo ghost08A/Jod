@@ -31,10 +31,13 @@ export function createChildInEditor(editor: Editor): boolean {
     return view.someProp('handleKeyDown', (handleKeyDown) => handleKeyDown(view, enter)) ?? false
 }
 
-/** While the slash menu is open its own keys win; otherwise the key runs and is always taken */
-function whenMenuClosed(run: (editor: Editor) => unknown): KeyboardShortcutCommand {
+/**
+ * While the slash menu is open its own keys win, and while an IME is composing (Thai, Japanese...) the IME owns
+ * Escape, Tab and Enter; otherwise the key runs and is always taken
+ */
+export function whenMenuClosed(run: (editor: Editor) => unknown): KeyboardShortcutCommand {
     return ({ editor }) => {
-        if (isSlashMenuOpen(editor.state)) return false
+        if (isSlashMenuOpen(editor.state) || editor.view.composing) return false
         run(editor)
         return true
     }

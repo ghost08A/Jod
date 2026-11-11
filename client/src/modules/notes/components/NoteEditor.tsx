@@ -2,7 +2,7 @@ import { EditorContent, useEditorState } from '@tiptap/react'
 import { useEffect, useId, useState } from 'react'
 import { useNoteEditor } from '../hooks/useNoteEditor'
 import type { NoteDocument } from '../utils/editor/block-document'
-import { createChildOrExitBlock, indentBlock, outdentBlock } from '../utils/editor/block-nesting'
+import { indentBlock, outdentBlock } from '../utils/editor/block-nesting'
 import { createChildInEditor, indentInEditor, outdentInEditor } from '../utils/editor/nesting-keys'
 import { isNoteDocument } from '../utils/editor/note-document-guard'
 import { MobileNestingToolbar } from './MobileNestingToolbar'
@@ -44,7 +44,6 @@ function NoteEditorSurface({ initialDocument, onDocumentChange }: NoteEditorSurf
             isFocused: current?.isFocused ?? false,
             canIndent: current ? indentBlock(current.state) : false,
             canOutdent: current ? outdentBlock(current.state) : false,
-            canCreateChild: current ? createChildOrExitBlock(current.state) : false,
         }),
     })
     const isFocused = status?.isFocused ?? false
@@ -76,7 +75,6 @@ function NoteEditorSurface({ initialDocument, onDocumentChange }: NoteEditorSurf
                 <MobileNestingToolbar
                     canIndent={status.canIndent}
                     canOutdent={status.canOutdent}
-                    canCreateChild={status.canCreateChild}
                     onIndent={() => indentInEditor(editor)}
                     onOutdent={() => outdentInEditor(editor)}
                     onCreateChild={() => createChildInEditor(editor)}

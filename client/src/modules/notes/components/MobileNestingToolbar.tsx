@@ -24,7 +24,6 @@ function keepEditorFocus(event: MouseEvent) {
 type MobileNestingToolbarProps = {
     canIndent: boolean
     canOutdent: boolean
-    canCreateChild: boolean
     onIndent: () => void
     onOutdent: () => void
     onCreateChild: () => void
@@ -36,7 +35,7 @@ export function MobileNestingToolbar(props: MobileNestingToolbarProps) {
     const buttons = [
         { label: 'เยื้องเข้า', symbol: '⇥', isEnabled: props.canIndent, run: props.onIndent },
         { label: 'ถอยออก', symbol: '⇤', isEnabled: props.canOutdent, run: props.onOutdent },
-        { label: 'บล็อกใหม่ข้างล่าง', symbol: '↳', isEnabled: props.canCreateChild, run: props.onCreateChild },
+        { label: 'บล็อกใหม่ข้างล่าง', symbol: '↳', isEnabled: true, run: props.onCreateChild },
     ]
 
     return (
