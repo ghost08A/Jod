@@ -101,7 +101,7 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
         }
 
         // Note: built from what was just written (not read back) so a save that follows ours cannot change this answer.
-        // CreatedAt never changes after the note is made; a save does not write the structure, so it is read here
+        // CreatedAt never changes after the note is made, and a save does not write placement, parent or position, so those are read here too
         var kept = await database.Notes.AsNoTracking()
             .Where(note => note.Id == noteId && note.OwnerId == userId)
             .Select(note => new { note.CreatedAt, note.Placement, note.ParentId, note.Position })
@@ -128,18 +128,23 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
     // Two creates at the same moment can give two siblings the same position
     private async Task<int> NextChildPositionAsync(Guid userId, Guid parentId)
     {
-        var parent = await database.Notes.AsNoTracking()
-            .Where(note => note.Id == parentId && note.OwnerId == userId)
-            .Select(note => new { note.ParentId })
-            .SingleOrDefaultAsync() ?? throw NotFound();
-        var ancestors = 1; // the parent itself
-        for (var next = parent.ParentId; next is { } id; ancestors++)
+        // Note: one recursive query counts the parent and its ancestors (0 rows = the parent is missing or not the caller's).
+        // Depth is in the row so UNION cannot merge a cycle away, and the depth limit is what stops it
+        var chain = await database.Database.SqlQuery<int>($"""
+            WITH RECURSIVE chain ("Id", "ParentId", depth) AS (
+                SELECT "Id", "ParentId", 1 FROM "Notes" WHERE "Id" = {parentId} AND "OwnerId" = {userId}
+                UNION
+                SELECT n."Id", n."ParentId", c.depth + 1 FROM "Notes" n JOIN chain c ON n."Id" = c."ParentId" WHERE c.depth <= {MaxAncestors}
+            )
+            SELECT count(*)::int AS "Value" FROM chain
+            """).SingleAsync();
+        if (chain == 0)
         {
-            if (ancestors >= MaxAncestors)
-            {
-                throw new CustomError("โน้ตย่อยซ้อนลึกเกินไป");
-            }
-            next = await database.Notes.AsNoTracking().Where(note => note.Id == id).Select(note => note.ParentId).SingleOrDefaultAsync();
+            throw NotFound();
+        }
+        if (chain - 1 >= MaxAncestors)
+        {
+            throw new CustomError("โน้ตย่อยซ้อนลึกเกินไป");
         }
         var last = await database.Notes.AsNoTracking()
             .Where(note => note.OwnerId == userId && note.ParentId == parentId)
