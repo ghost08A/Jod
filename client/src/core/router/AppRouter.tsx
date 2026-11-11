@@ -1,13 +1,14 @@
-import { Navigate, Route, Routes } from 'react-router'
+import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterProvider } from 'react-router'
 import { AccountPage } from '../../modules/auth/components/AccountPage'
 import { LoginPage } from '../../modules/auth/components/LoginPage'
 import { NotePage } from '../../modules/notes/components/NotePage'
 import { NotesWorkspace } from '../../modules/notes/components/NotesWorkspace'
 import { RequireAuth } from './RequireAuth'
 
-export function AppRouter() {
-    return (
-        <Routes>
+// Note: a data router (not BrowserRouter) so the note page can use useBlocker to ask before leaving unsaved text
+const router = createBrowserRouter(
+    createRoutesFromElements(
+        <>
             <Route path="/login" element={<LoginPage />} />
             <Route element={<RequireAuth />}>
                 <Route path="/" element={<NotesWorkspace />}>
@@ -17,6 +18,10 @@ export function AppRouter() {
                 <Route path="/account" element={<AccountPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-    )
+        </>,
+    ),
+)
+
+export function AppRouter() {
+    return <RouterProvider router={router} />
 }
