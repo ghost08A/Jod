@@ -630,8 +630,177 @@
     background: var(--color-backdrop);
 }
 
+/* Conflict page: two versions of one note, side by side. Every pair uses existing colors (text on bg 14.1:1, muted on bg 7.4:1, danger on danger-bg 7.9:1) */
+.notes-page[data-conflict='true'] {
+    max-width: none;
+}
+
+.notes-page-fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.notes-page-fields[hidden] {
+    display: none;
+}
+
+.notes-conflict {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    /* Note: the status box is fixed in the top right corner, so the heading starts below it */
+    padding-top: var(--space-6);
+}
+
+.notes-conflict-heading {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    line-height: 1.3;
+}
+
+.notes-conflict-intro {
+    color: var(--color-text-muted);
+}
+
+/* The tab switch is only for a narrow screen (see the media query at the end) */
+.notes-conflict-tabs {
+    display: none;
+}
+
+.notes-conflict-sides {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-5);
+}
+
+.notes-conflict-side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+    padding: var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius);
+}
+
+.notes-conflict-side-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.notes-conflict-side-heading {
+    font-size: 1.125rem;
+}
+
+.notes-conflict-title {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.notes-conflict-context {
+    color: var(--color-text-muted);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.notes-conflict-side .notes-editor {
+    margin-top: var(--space-2);
+}
+
+.notes-conflict-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
+/* At least 48px tall, so a finger can hit them */
+.notes-conflict-button,
+.notes-conflict-tab {
+    min-height: 48px;
+}
+
+.notes-conflict-tab {
+    flex: 1;
+    padding: var(--space-2) var(--space-4);
+    font: inherit;
+    font-weight: 600;
+    color: var(--color-text);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    cursor: pointer;
+}
+
+.notes-conflict-tab:hover {
+    background: var(--color-row-hover-bg);
+}
+
+.notes-conflict-tab:active {
+    background: var(--color-row-active-bg);
+}
+
+/* The chosen tab is also marked by the accent bar and the bold text, never by color alone */
+.notes-conflict-tab[aria-selected='true'] {
+    background: var(--color-row-selected-bg);
+    border-color: var(--color-accent);
+    box-shadow: inset 0 -4px 0 var(--color-accent);
+}
+
+.notes-conflict-dialog {
+    width: min(32rem, calc(100vw - 2 * var(--space-4)));
+    padding: var(--space-5);
+    color: var(--color-text);
+    background: var(--color-surface-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.notes-conflict-dialog::backdrop {
+    background: var(--color-backdrop);
+}
+
+.notes-conflict-dialog > * + * {
+    margin-top: var(--space-4);
+}
+
+.notes-conflict-dialog-title {
+    font-size: 1.25rem;
+}
+
+.notes-conflict-dialog-copy,
+.notes-conflict-dialog-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+}
+
 /* Note: 768px is DRAWER_MAX_WIDTH_PX in utils/shell/drawer-breakpoint.ts. Change both together */
 @media (max-width: 768px) {
+    .notes-conflict-tabs {
+        display: flex;
+        gap: var(--space-2);
+    }
+
+    .notes-conflict-sides {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .notes-conflict-side[data-active='false'] {
+        display: none;
+    }
+
+    .notes-conflict-actions > * {
+        flex: 1 1 100%;
+    }
+
     .notes-sidebar {
         position: fixed;
         inset: 0 auto 0 0;

@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useBlocker } from 'react-router'
 import { sessionCoordinator } from '../../auth/services/browser-session'
-import { getNote, saveNote } from '../services/note-service'
+import { createNote, getNote, saveNote } from '../services/note-service'
 import type { Note } from '../types/note'
 import { createAutosaveController, type AutosaveView } from '../utils/autosave/autosave-controller'
 import { shouldConfirmBeforeSwitchingNote } from '../utils/autosave/autosave-decisions'
-import { normalizeNoteSnapshot } from '../utils/autosave/conflict-equivalence'
+import { normalizeNoteSnapshot, type NoteSnapshot } from '../utils/autosave/conflict-equivalence'
 import { noteToPlainText } from '../utils/autosave/note-plain-text'
 import { isSessionCloseToExpiry } from '../utils/autosave/save-request'
 import type { NoteDocument } from '../utils/editor/block-document'
+
+export type ConflictSide = 'mine' | 'theirs'
 
 const LEAVE_NOTE_MESSAGE = 'โน้ตนี้ยังบันทึกไม่เสร็จ ถ้าออกตอนนี้ ข้อความล่าสุดอาจหายได้ ต้องการออกจากโน้ตนี้หรือไม่'
 
@@ -21,7 +23,7 @@ function keepSessionFresh() {
 }
 
 /** Saves the open note by itself (see utils/autosave). This hook only connects it to the browser, the router and the API */
-export function useAutosave(note: Note) {
+export function useAutosave(note: Note, onNotesChanged: () => void) {
     const [view, setView] = useState<AutosaveView>(() => ({
         status: 'idle',
         failureReason: undefined,
@@ -29,8 +31,13 @@ export function useAutosave(note: Note) {
         hasRefetchFailed: false,
         loadedNote: normalizeNoteSnapshot(note),
         loadedRevision: 0,
+        conflictServerNote: undefined,
+        conflictLimitReached: false,
+        conflictMyNote: undefined,
     }))
     const [copyResult, setCopyResult] = useState<'copied' | 'refused' | undefined>(undefined)
+    const [conflictCopy, setConflictCopy] = useState<{ side: ConflictSide; result: 'copied' | 'refused' } | undefined>(undefined)
+    const [keepBothState, setKeepBothState] = useState<'working' | 'failed' | undefined>(undefined)
     const controllerRef = useRef<ReturnType<typeof createAutosaveController>>(undefined)
 
     useEffect(() => {
@@ -40,6 +47,9 @@ export function useAutosave(note: Note) {
             fetchLatestNote: () => getNote(note.id),
             onViewChange: setView,
             keepSessionFresh,
+            createNote,
+            saveOtherNote: saveNote,
+            onNotesChanged,
         })
         controllerRef.current = controller
 
@@ -68,7 +78,7 @@ export function useAutosave(note: Note) {
             controller.dispose()
             controllerRef.current = undefined
         }
-    }, [note])
+    }, [note, onNotesChanged])
 
     // Note: covers the note list, the drawer, New note and the browser back button. Going to /login is never
     // blocked: the session is gone and the sign-in page replaces this one whatever the answer
@@ -102,5 +112,32 @@ export function useAutosave(note: Note) {
         }
     }, [])
 
-    return { view, copyResult, editTitle, editContext, editContent, retry, copyContent }
+    const copyConflictSide = useCallback(async (side: ConflictSide) => {
+        const snapshot: NoteSnapshot | undefined = side === 'mine' ? view.conflictMyNote : view.conflictServerNote
+        if (!snapshot) return
+        try {
+            await navigator.clipboard.writeText(noteToPlainText(snapshot))
+            setConflictCopy({ side, result: 'copied' })
+        } catch {
+            setConflictCopy({ side, result: 'refused' })
+        }
+    }, [view.conflictMyNote, view.conflictServerNote])
+    const keepMine = useCallback(() => controllerRef.current?.keepMine(), [])
+    const takeTheirs = useCallback(() => controllerRef.current?.takeTheirs(), [])
+    const keepBoth = useCallback(async () => {
+        setKeepBothState('working')
+        const isDone = await (controllerRef.current?.keepBoth() ?? Promise.resolve(false))
+        setKeepBothState(isDone ? undefined : 'failed')
+    }, [])
+
+    return {
+        view,
+        copyResult,
+        editTitle,
+        editContext,
+        editContent,
+        retry,
+        copyContent,
+        conflict: { conflictCopy, keepBothState, copyConflictSide, keepMine, takeTheirs, keepBoth },
+    }
 }
