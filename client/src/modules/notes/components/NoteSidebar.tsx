@@ -17,11 +17,13 @@ type NoteSidebarProps = {
     openerRef: RefObject<HTMLElement | null>
     /** Closes the drawer. Must keep the same identity between renders */
     onClose: () => void
+    /** The note list; NotesWorkspace owns it so the open note's page can ask for a refresh too */
+    noteList: ReturnType<typeof useNoteList>
 }
 
-export function NoteSidebar({ isDrawer, isOpen, openerRef, onClose }: NoteSidebarProps) {
+export function NoteSidebar({ isDrawer, isOpen, openerRef, onClose, noteList }: NoteSidebarProps) {
     const [panel, setPanel] = useState<HTMLElement | null>(null)
-    const { items, error, isLoading, refresh, retry } = useNoteList()
+    const { items, error, isLoading, refresh, retry } = noteList
     const isModal = isDrawer && isOpen
     useDrawerBehavior(isModal ? panel : null, openerRef, onClose)
 
