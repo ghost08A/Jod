@@ -25,10 +25,11 @@ Layout (`modules/auth` is the reference module for the folder shape and for the 
 src/
     core/                     # app-wide wiring
         http/                 # requestJson/getJson, authorized-fetch (token + one retry on 401), api-error (ApiError)
-        router/               # AppRouter, RequireAuth
+        router/               # AppRouter (a data router, createBrowserRouter), RequireAuth
         providers/            # AuthProvider
     modules/                  # features
-        auth/                 # session + Google sign-in (button, service that loads Google Identity Services)
+        auth/                 # session + Google sign-in (button, service that loads Google Identity Services), useSignOut
+        notes/                # note list and page, block editor (TipTap), autosave, conflict page (see "Notes rules")
         <module_name>/
             components/       # module components
             constants/
@@ -37,7 +38,7 @@ src/
             utils/            # pure functions (unit-testable)
             types/
     shared/                   # reusable across modules
-        components/
+        components/           # ErrorMessage (message + reference box)
         constants/
         hooks/
         utils/                # pure functions (unit-testable)
@@ -58,6 +59,16 @@ src/
 - A renewal must never run twice at once: the refresh token rotates on every use and reusing an old one signs the user out. Web Locks make tabs take turns and a `BroadcastChannel` hands the new token to the other tabs, so only one request reaches the server
 - Sign-in, renewal and sign-out calls use `authorized: false` (the Google credential call, refresh and logout)
 - Every error from the server arrives as an `ApiError` (message in Thai plus a `reference`). Show the message and the reference; do not show anything else from the response
+
+### Notes rules
+
+- The router is a data router (`createBrowserRouter` + `RouterProvider`) because `useBlocker` needs one; it asks before leaving a note whose text is not saved yet. Going to `/login` is never blocked
+- Autosave logic is pure and tested in Node: `utils/autosave/autosave-machine.ts` (state machine) and `autosave-controller.ts` (runs it with timers and requests). `hooks/useAutosave.ts` only connects it to the browser (visibility, pagehide, router blocker). Do not put save rules in components
+- A save sent while the page is hidden or closed uses `keepalive`; its body must stay under 64 KiB, otherwise the note stays "not saved" and the normal timers continue. Its result is unknown, so the note is fetched again before the next save
+- A 409 carries the server's current note in `ApiError.extensions.payload`; the conflict page compares it with the text on screen and never overwrites either side without a confirm and a copy button
+- Note text (title, context, content) is never logged, never put in a URL, and never kept in `localStorage`/`sessionStorage`
+- The editor (TipTap, large) and the conflict page are lazy chunks, so the sign-in page does not load them
+- Show errors with `ErrorMessage` and sign out with `useSignOut` instead of writing them again
 
 ### Rules
 
