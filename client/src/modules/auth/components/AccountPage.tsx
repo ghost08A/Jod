@@ -1,28 +1,13 @@
-import { useState } from 'react'
 import { Link } from 'react-router'
-import { ApiError, toApiError } from '../../../core/http/api-error'
-import { useAuth } from '../hooks/useAuth'
+import { ErrorMessage } from '../../../shared/components/ErrorMessage'
 import { useCurrentUser } from '../hooks/useCurrentUser'
+import { useSignOut } from '../hooks/useSignOut'
 import './auth.css'
 
 // Note: this page exists to show that the access token works (it reads the email from the server)
 export function AccountPage() {
-    const { logout } = useAuth()
     const { user, error } = useCurrentUser()
-    const [isSigningOut, setIsSigningOut] = useState(false)
-    const [signOutError, setSignOutError] = useState<ApiError | undefined>(undefined)
-
-    async function handleSignOut() {
-        setSignOutError(undefined)
-        setIsSigningOut(true)
-        try {
-            await logout()
-        } catch (failure) {
-            setSignOutError(failure instanceof ApiError ? failure : toApiError(0, undefined))
-            setIsSigningOut(false)
-        }
-    }
-
+    const { signOut, isSigningOut, error: signOutError } = useSignOut()
     const shownError = error ?? signOutError
 
     return (
@@ -38,14 +23,9 @@ export function AccountPage() {
                     )}
                 </div>
 
-                {shownError && (
-                    <div className="auth-error" role="alert">
-                        <p>{shownError.message}</p>
-                        {shownError.reference && <p className="auth-error-reference">รหัสอ้างอิง: {shownError.reference}</p>}
-                    </div>
-                )}
+                {shownError && <ErrorMessage styleScope="auth" message={shownError.message} reference={shownError.reference} />}
 
-                <button className="button-primary" type="button" onClick={handleSignOut} disabled={isSigningOut} aria-busy={isSigningOut}>
+                <button className="button-primary" type="button" onClick={signOut} disabled={isSigningOut} aria-busy={isSigningOut}>
                     {isSigningOut && <span className="spinner" aria-hidden="true" />}
                     {isSigningOut ? 'กำลังออกจากระบบ…' : 'ออกจากระบบ'}
                 </button>

@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useOutletContext, useParams } from 'react-router'
+import { ErrorMessage } from '../../../shared/components/ErrorMessage'
 import { useAutosave } from '../hooks/useAutosave'
 import { useNote } from '../hooks/useNote'
 import type { Note } from '../types/note'
@@ -12,6 +13,14 @@ import { NoteTitleField } from './NoteTitleField'
 const NoteEditor = lazy(() =>
     import('./NoteEditor').then(
         (module) => ({ default: module.NoteEditor }),
+        () => ({ default: NoteEditorLoadError }),
+    ),
+)
+
+// Note: the conflict page holds two read-only editors, so it shares the editor chunk and is loaded only when a conflict happens
+const ConflictPage = lazy(() =>
+    import('./ConflictPage').then(
+        (module) => ({ default: module.ConflictPage }),
         () => ({ default: NoteEditorLoadError }),
     ),
 )
@@ -65,10 +74,7 @@ export function NotePage() {
     if (error || !note) {
         return (
             <div className="notes-page">
-                <div className="notes-error" role="alert">
-                    <p>{error?.message}</p>
-                    {error?.reference && <p className="notes-error-reference">รหัสอ้างอิง: {error.reference}</p>}
-                </div>
+                <ErrorMessage styleScope="notes" message={error?.message} reference={error?.reference} />
                 <button className="button-primary" type="button" onClick={retry}>
                     ลองอีกครั้ง
                 </button>
@@ -81,19 +87,40 @@ export function NotePage() {
 }
 
 function LoadedNotePage({ note }: { note: Note }) {
-    const { view, copyResult, editTitle, editContext, editContent, retry, copyContent } = useAutosave(note)
-    const { loadedNote, loadedRevision } = view
+    const { refreshNoteList } = useOutletContext<{ refreshNoteList: () => void }>()
+    const { view, copyResult, editTitle, editContext, editContent, retry, copyContent, conflict } = useAutosave(note, refreshNoteList)
+    const { loadedNote, loadedRevision, conflictMyNote, conflictServerNote } = view
+    const isConflict = conflictMyNote !== undefined && conflictServerNote !== undefined
 
     // Note: the fields and the editor read their text once. When a newer note came from the server (only while
     // nothing here was edited), the revision key opens them again with that text
     return (
-        <article className="notes-page">
+        <article className="notes-page" data-conflict={isConflict}>
             <AutosaveStatusIndicator view={view} copyResult={copyResult} onRetry={retry} onCopy={copyContent} />
-            <NoteTitleField key={`title-${loadedRevision}`} initialTitle={loadedNote.title} onTitleChange={editTitle} />
-            <NoteContextField key={`context-${loadedRevision}`} initialContext={loadedNote.context} onContextChange={editContext} />
-            <Suspense fallback={<NoteEditorSkeleton />}>
-                <NoteEditor key={`editor-${loadedRevision}`} content={loadedNote.content} onDocumentChange={editContent} />
-            </Suspense>
+            {isConflict && (
+                <Suspense fallback={<NoteEditorSkeleton />}>
+                    <ConflictPage
+                        mine={conflictMyNote}
+                        theirs={conflictServerNote}
+                        isLimitReached={view.conflictLimitReached}
+                        isResolving={view.isResolvingConflict}
+                        copyResult={conflict.sideCopyResult}
+                        keepBothState={conflict.keepBothState}
+                        onCopy={conflict.copySide}
+                        onKeepMine={conflict.keepMine}
+                        onTakeTheirs={conflict.takeTheirs}
+                        onKeepBoth={conflict.keepBoth}
+                    />
+                </Suspense>
+            )}
+            {/* Note: kept mounted but hidden during a conflict, so the fields keep their text and cannot be typed in */}
+            <div className="notes-page-fields" hidden={isConflict}>
+                <NoteTitleField key={`title-${loadedRevision}`} initialTitle={loadedNote.title} onTitleChange={editTitle} />
+                <NoteContextField key={`context-${loadedRevision}`} initialContext={loadedNote.context} onContextChange={editContext} />
+                <Suspense fallback={<NoteEditorSkeleton />}>
+                    <NoteEditor key={`editor-${loadedRevision}`} content={loadedNote.content} onDocumentChange={editContent} />
+                </Suspense>
+            </div>
         </article>
     )
 }

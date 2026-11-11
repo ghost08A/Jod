@@ -47,15 +47,20 @@ function fillOmittedDefaults(blocks: Record<string, unknown>[]): void {
 
 /**
  * Checks that note content from the API follows the server's document rules, so the editor can open it.
- * Accepted content is completed in place (a missing children becomes [], a missing checked becomes false), so it
- * really is a NoteDocument afterwards. Id format and uniqueness are the server's rules; duplicates are fixed on
- * the editor's output by reissueDuplicateBlockIds.
+ * It only checks: a missing children or checked is accepted as is (see normalizeNoteDocument). Id format and
+ * uniqueness are the server's rules; duplicates are fixed on the editor's output by reissueDuplicateBlockIds.
  */
 export function isNoteDocument(value: unknown): value is NoteDocument {
     if (!isRecord(value) || value.schemaVersion !== 1 || !isStoredBlockList(value.blocks)) return false
-    if (Object.keys(value).some((key) => key !== 'schemaVersion' && key !== 'blocks')) return false
-    fillOmittedDefaults(value.blocks)
-    return true
+    return !Object.keys(value).some((key) => key !== 'schemaVersion' && key !== 'blocks')
+}
+
+/** A copy of a valid document with the omitted values written out (children [], checked false), or undefined when invalid */
+export function normalizeNoteDocument(value: unknown): NoteDocument | undefined {
+    if (!isNoteDocument(value)) return undefined
+    const copy = structuredClone(value)
+    fillOmittedDefaults(copy.blocks as unknown as Record<string, unknown>[])
+    return copy
 }
 
 /** True when there is nothing written yet: no blocks, or a single paragraph with no text */

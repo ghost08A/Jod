@@ -1,10 +1,11 @@
 import { EditorContent, useEditorState } from '@tiptap/react'
 import { useEffect, useId, useState } from 'react'
+import { ErrorMessage } from '../../../shared/components/ErrorMessage'
 import { useNoteEditor } from '../hooks/useNoteEditor'
 import type { NoteDocument } from '../utils/editor/block-document'
 import { indentBlock, outdentBlock } from '../utils/editor/block-nesting'
 import { createChildInEditor, indentInEditor, outdentInEditor } from '../utils/editor/nesting-keys'
-import { isNoteDocument } from '../utils/editor/note-document-guard'
+import { normalizeNoteDocument } from '../utils/editor/note-document-guard'
 import { MobileNestingToolbar } from './MobileNestingToolbar'
 import { SlashMenu } from './SlashMenu'
 
@@ -13,30 +14,31 @@ type NoteEditorProps = {
     content: unknown
     /** Called after every edit with the whole document, block ids made unique */
     onDocumentChange?: (document: NoteDocument) => void
+    /** Shows the content only, without a cursor, hint or editing tools */
+    isReadOnly?: boolean
 }
 
-export function NoteEditor({ content, onDocumentChange }: NoteEditorProps) {
-    const [initialDocument] = useState(() => (isNoteDocument(content) ? content : undefined))
+export function NoteEditor({ content, onDocumentChange, isReadOnly }: NoteEditorProps) {
+    const [initialDocument] = useState(() => normalizeNoteDocument(content))
 
     if (!initialDocument) {
         // Note: the editor is not opened at all, so content it cannot read is never replaced
         return (
-            <div className="notes-error" role="alert">
-                <p>อ่านเนื้อหาของโน้ตนี้ไม่ได้</p>
-            </div>
+            <ErrorMessage styleScope="notes" message="อ่านเนื้อหาของโน้ตนี้ไม่ได้" />
         )
     }
 
-    return <NoteEditorSurface initialDocument={initialDocument} onDocumentChange={onDocumentChange} />
+    return <NoteEditorSurface initialDocument={initialDocument} onDocumentChange={onDocumentChange} isReadOnly={isReadOnly} />
 }
 
 type NoteEditorSurfaceProps = {
     initialDocument: NoteDocument
     onDocumentChange?: (document: NoteDocument) => void
+    isReadOnly?: boolean
 }
 
-function NoteEditorSurface({ initialDocument, onDocumentChange }: NoteEditorSurfaceProps) {
-    const { editor, isEmpty, slashMenu } = useNoteEditor({ initialDocument, onDocumentChange })
+function NoteEditorSurface({ initialDocument, onDocumentChange, isReadOnly }: NoteEditorSurfaceProps) {
+    const { editor, isEmpty, slashMenu } = useNoteEditor({ initialDocument, onDocumentChange, isReadOnly })
     const slashListId = useId()
     const status = useEditorState({
         editor,
@@ -64,7 +66,7 @@ function NoteEditorSurface({ initialDocument, onDocumentChange }: NoteEditorSurf
 
     return (
         <div className="notes-editor">
-            {isEmpty && (
+            {isEmpty && !isReadOnly && (
                 <p className="notes-editor-hint" aria-hidden="true">
                     พิมพ์เนื้อหาที่นี่…
                 </p>

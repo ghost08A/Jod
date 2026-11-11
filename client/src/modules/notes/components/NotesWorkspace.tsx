@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, useSyncExternalStore } from 'react'
 import { Outlet } from 'react-router'
+import { useNoteList } from '../hooks/useNoteList'
 import { isDrawerViewport } from '../utils/shell/drawer-breakpoint'
 import { NoteSidebar } from './NoteSidebar'
 import './notes.css'
@@ -15,6 +16,7 @@ function useIsDrawer() {
 
 export function NotesWorkspace() {
     const isDrawer = useIsDrawer()
+    const noteList = useNoteList()
     // Note: not saved anywhere, so every page load starts with the sidebar shown on a wide screen and closed as a drawer
     const [isWideSidebarOpen, setIsWideSidebarOpen] = useState(true)
     const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -34,7 +36,7 @@ export function NotesWorkspace() {
 
     return (
         <div className="notes-workspace">
-            <NoteSidebar isDrawer={isDrawer} isOpen={isOpen} openerRef={openerRef} onClose={closeDrawer} />
+            <NoteSidebar isDrawer={isDrawer} isOpen={isOpen} openerRef={openerRef} onClose={closeDrawer} noteList={noteList} />
             {isModalOpen && <div className="notes-backdrop" onClick={closeDrawer} aria-hidden="true" />}
             <div className="notes-content" inert={isModalOpen}>
                 <header className="notes-topbar">
@@ -53,7 +55,7 @@ export function NotesWorkspace() {
                     </button>
                 </header>
                 <main className="notes-main">
-                    <Outlet />
+                    <Outlet context={{ refreshNoteList: noteList.refresh }} />
                 </main>
             </div>
         </div>

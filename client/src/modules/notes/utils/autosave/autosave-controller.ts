@@ -10,6 +10,7 @@ import {
 import { isConflictEquivalentToSaved, type NoteSnapshot, type ServerNoteVersion } from './conflict-equivalence'
 import type { SaveFailureCause } from './retry-policy'
 import { sanitizeNoteSnapshot } from './sanitize-note-snapshot'
+import { copyNoteWithNewBlockIds } from './note-copy'
 import { planPageLeaving, toSaveErrorEvent, toSaveNoteBody } from './save-request'
 
 /** What the status indicator needs to know */
@@ -24,6 +25,14 @@ export type AutosaveView = {
     loadedNote: NoteSnapshot
     /** Goes up by one each time loadedNote is replaced, so the page can open the fields and editor again */
     loadedRevision: number
+    /** The note the server holds now, carried by the 409. Set only while status is 'conflict' */
+    conflictServerNote: ServerNoteVersion | undefined
+    /** "Use this version" collided 3 times in a row, so it is not offered again */
+    conflictLimitReached: boolean
+    /** The latest text on this tab (cleaned). Set while status is 'conflict' or "Use this version" is saving, and it cannot change then */
+    conflictMyNote: NoteSnapshot | undefined
+    /** "Use this version" is being saved, so the conflict page stays up (locked) until the answer comes back */
+    isResolvingConflict: boolean
 }
 
 type AutosaveControllerOptions = {
@@ -34,6 +43,11 @@ type AutosaveControllerOptions = {
     onViewChange: (view: AutosaveView) => void
     /** Called while some text is not saved yet, so the session can be renewed before it runs out */
     keepSessionFresh?: () => void
+    /** "Keep both": creates an empty note, and the text is then saved into it with saveOtherNote */
+    createNote?: () => Promise<{ id: string; version: number }>
+    saveOtherNote?: (noteId: string, body: ReturnType<typeof toSaveNoteBody>) => Promise<unknown>
+    /** Called after "keep both" tried to create a note, whatever the result, so the note list can refresh */
+    refreshNoteList?: () => void
 }
 
 const TIMER_EVENTS = {
@@ -52,6 +66,9 @@ export function createAutosaveController({
     fetchLatestNote,
     onViewChange,
     keepSessionFresh,
+    createNote,
+    saveOtherNote,
+    refreshNoteList,
 }: AutosaveControllerOptions) {
     let state = createInitialAutosaveState(initialNote)
     const timers: Partial<Record<AutosaveTimerKind, ReturnType<typeof setTimeout>>> = {}
@@ -61,8 +78,10 @@ export function createAutosaveController({
     let isDisposed = false
     let loadedNote: NoteSnapshot = state.currentSnapshot
     let loadedRevision = 0
+    let isKeepingBoth = false
 
     function publish() {
+        const isResolvingConflict = state.isConflictResolutionSave
         if (state.status === 'saved' || state.status === 'idle') isTooLargeForKeepalive = false
         if (shouldConfirmBeforeSwitchingNote(state.status)) keepSessionFresh?.()
         onViewChange({
@@ -72,6 +91,10 @@ export function createAutosaveController({
             hasRefetchFailed,
             loadedNote,
             loadedRevision,
+            conflictServerNote: state.conflictServerNote,
+            conflictLimitReached: state.conflictLimitReached,
+            conflictMyNote: state.status === 'conflict' || isResolvingConflict ? state.currentSnapshot : undefined,
+            isResolvingConflict,
         })
     }
 
@@ -187,6 +210,35 @@ export function createAutosaveController({
         retry() {
             hasRefetchFailed = false
             dispatch({ type: 'manualRetryRequested', nowMs: Date.now() })
+        },
+        /** Conflict: save this tab's text again over the server note. The machine stops it after 3 collisions */
+        keepMine() {
+            dispatch({ type: 'conflictUseMineRequested', nowMs: Date.now() })
+        },
+        /** Conflict: drop this tab's text and show the server note carried by the 409 */
+        takeTheirs() {
+            if (state.conflictServerNote) dispatch({ type: 'conflictUseTheirsAccepted', serverNote: state.conflictServerNote })
+        },
+        /**
+         * Conflict: save this tab's text as a new note, then take the server note. Returns false (and stays in the
+         * conflict with the text untouched) when there is no conflict or the new note could not be made
+         */
+        async keepBoth(): Promise<boolean> {
+            const { conflictServerNote, currentSnapshot } = state
+            if (state.status !== 'conflict' || !conflictServerNote || !createNote || !saveOtherNote || isKeepingBoth) return false
+            isKeepingBoth = true
+            try {
+                const copy = copyNoteWithNewBlockIds(currentSnapshot)
+                const created = await createNote()
+                await saveOtherNote(created.id, toSaveNoteBody(copy, created.version))
+                dispatch({ type: 'conflictUseTheirsAccepted', serverNote: conflictServerNote })
+                return true
+            } catch {
+                return false
+            } finally {
+                isKeepingBoth = false
+                refreshNoteList?.()
+            }
         },
         getStatus(): AutosaveStatus {
             return state.status

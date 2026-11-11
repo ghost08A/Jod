@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Navigate } from 'react-router'
 import { ApiError, toApiError } from '../../../core/http/api-error'
+import { ErrorMessage } from '../../../shared/components/ErrorMessage'
 import { useAuth } from '../hooks/useAuth'
 import { GoogleSignInButton } from './GoogleSignInButton'
 import { JodMark } from './JodMark'
@@ -89,12 +90,7 @@ export function LoginPage() {
                         </p>
                     )}
 
-                    {submitError && (
-                        <div className="auth-error" role="alert">
-                            <p>{submitError.message}</p>
-                            {submitError.reference && <p className="auth-error-reference">รหัสอ้างอิง: {submitError.reference}</p>}
-                        </div>
-                    )}
+                    {submitError && <ErrorMessage styleScope="auth" message={submitError.message} reference={submitError.reference} />}
                 </div>
             </section>
         </main>

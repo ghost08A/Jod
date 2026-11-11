@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isEmptyNoteDocument, isNoteDocument } from './note-document-guard'
+import { isEmptyNoteDocument, isNoteDocument, normalizeNoteDocument } from './note-document-guard'
 import { noteDocumentToTipTap, tipTapToNoteDocument } from './tiptap-converter'
 
 const validDocument = {
@@ -92,7 +92,7 @@ describe('isNoteDocument follows the server contract', () => {
         const content: unknown = { schemaVersion: 1, blocks: [{ id: 'x', type, text: 'ไม่มีลูก' }] }
 
         expect(isNoteDocument(content)).toBe(true)
-        expect(content).toMatchObject({ blocks: [{ id: 'x', type, text: 'ไม่มีลูก', children: [] }] })
+        expect(normalizeNoteDocument(content)).toMatchObject({ blocks: [{ id: 'x', type, text: 'ไม่มีลูก', children: [] }] })
     })
 
     it('accepts a checklist without checked and treats it as not ticked, also deep inside children', () => {
@@ -102,7 +102,7 @@ describe('isNoteDocument follows the server contract', () => {
         }
 
         expect(isNoteDocument(content)).toBe(true)
-        expect(content).toEqual({
+        expect(normalizeNoteDocument(content)).toEqual({
             schemaVersion: 1,
             blocks: [
                 {
@@ -123,9 +123,10 @@ describe('isNoteDocument follows the server contract', () => {
                 { id: 'b', type: 'bullet', text: 'จุด' },
             ],
         }
-        if (!isNoteDocument(content)) throw new Error('expected a valid document')
+        const document = normalizeNoteDocument(content)
+        if (!document) throw new Error('expected a valid document')
 
-        expect(tipTapToNoteDocument(noteDocumentToTipTap(content))).toEqual({
+        expect(tipTapToNoteDocument(noteDocumentToTipTap(document))).toEqual({
             schemaVersion: 1,
             blocks: [
                 { id: 'c', type: 'checklist', text: 'งาน', checked: false, children: [] },
@@ -171,5 +172,38 @@ describe('isNoteDocument follows the server contract', () => {
 
         expect(isNoteDocument(content)).toBe(false)
         expect(content.blocks[0]).toEqual({ id: 'a', type: 'bullet', text: '' })
+    })
+})
+
+describe('isNoteDocument does not change its input', () => {
+    it('returns only a boolean and leaves omitted children and checked omitted', () => {
+        const content = { schemaVersion: 1, blocks: [{ id: 'c', type: 'checklist', text: 'งาน' }] }
+        const before = structuredClone(content)
+
+        expect(isNoteDocument(content)).toBe(true)
+        expect(content).toEqual(before)
+        expect(isNoteDocument({ schemaVersion: 2, blocks: [] })).toBe(false)
+    })
+})
+
+describe('normalizeNoteDocument', () => {
+    it('returns a copy with the defaults filled and leaves the original untouched', () => {
+        const content = { schemaVersion: 1, blocks: [{ id: 'a', type: 'toggle', text: '', children: [{ id: 'b', type: 'checklist', text: 'งาน' }] }] }
+        const before = structuredClone(content)
+
+        const result = normalizeNoteDocument(content)
+
+        expect(result).not.toBe(content)
+        expect(content).toEqual(before)
+        expect(result).toEqual({
+            schemaVersion: 1,
+            blocks: [{ id: 'a', type: 'toggle', text: '', children: [{ id: 'b', type: 'checklist', text: 'งาน', checked: false, children: [] }] }],
+        })
+    })
+
+    it('returns undefined when the value is not a valid document', () => {
+        expect(normalizeNoteDocument(null)).toBeUndefined()
+        expect(normalizeNoteDocument({ schemaVersion: 2, blocks: [] })).toBeUndefined()
+        expect(normalizeNoteDocument({ schemaVersion: 1, blocks: [{ id: 'x', type: 'nope', text: '' }] })).toBeUndefined()
     })
 })
