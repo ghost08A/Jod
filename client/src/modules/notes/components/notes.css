@@ -508,6 +508,75 @@
     display: none;
 }
 
+/* "/" menu. On surface-raised: text 12.0:1, muted 6.3:1, edge (border) 4.3:1. Hover row-hover 5.9:1 for muted,
+   highlighted row-selected 5.1:1 plus an accent bar (5.4:1) so the highlight is not color alone, pressed 4.6:1 */
+.notes-slash-menu {
+    position: fixed;
+    z-index: 5;
+    width: min(20rem, calc(100vw - 2 * var(--space-2)));
+    padding: var(--space-1);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--color-surface-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 24px var(--color-backdrop);
+}
+
+.notes-slash-menu-heading {
+    padding: var(--space-2) var(--space-2) var(--space-1);
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.notes-slash-menu-option {
+    display: flex;
+    flex-direction: column;
+    min-height: 44px;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--space-1);
+    cursor: pointer;
+}
+
+.notes-slash-menu-option:hover {
+    background: var(--color-row-hover-bg);
+}
+
+.notes-slash-menu-option[aria-selected='true'] {
+    background: var(--color-row-selected-bg);
+    box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.notes-slash-menu-option:active {
+    background: var(--color-row-active-bg);
+}
+
+.notes-slash-menu-title {
+    color: var(--color-text);
+}
+
+.notes-slash-menu-description {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+.notes-slash-menu-empty {
+    margin: 0;
+    padding: var(--space-2);
+    color: var(--color-text-muted);
+}
+
+/* Indent / outdent / child buttons for touch screens; shown by the narrow-screen media query below */
+.notes-nesting-toolbar {
+    display: none;
+}
+
+.notes-nesting-toolbar .notes-icon-button[aria-disabled='true'] {
+    color: var(--color-disabled-text);
+    background: transparent;
+    cursor: not-allowed;
+}
+
 /* Drawer */
 .notes-backdrop {
     position: fixed;
@@ -543,6 +612,19 @@
 
     .notes-title {
         font-size: 1.75rem;
+    }
+
+    /* Pinned to the bottom edge; the component lifts it above the on-screen keyboard. Text on surface 12.6:1 */
+    .notes-nesting-toolbar {
+        position: fixed;
+        inset-inline: 0;
+        z-index: 5;
+        display: flex;
+        justify-content: center;
+        gap: var(--space-2);
+        padding: var(--space-1);
+        background: var(--color-surface);
+        border-top: 1px solid var(--color-hairline);
     }
 }
 

@@ -8,6 +8,7 @@ import { reissueDuplicateBlockIds } from '../utils/editor/block-id'
 import { isEmptyNoteDocument } from '../utils/editor/note-document-guard'
 import { createNoteEditorExtensions } from '../utils/editor/note-editor-extensions'
 import { pastedTextToParagraphBlocks } from '../utils/editor/paste-plain-text'
+import { createSlashMenuRenderer, type SlashMenuState } from '../utils/editor/slash-command-extension'
 import { noteDocumentToTipTap, tipTapToNoteDocument, type TipTapNode } from '../utils/editor/tiptap-converter'
 
 /** Inserts pasted plain text at the selection: one line joins the current text, more lines become paragraphs */
@@ -68,7 +69,8 @@ export function useNoteEditor({ initialDocument, onDocumentChange }: UseNoteEdit
     // Note: read once. NotePage remounts this per note (key={note.id}), so another note never shows stale content
     const [startsEmpty] = useState(() => isEmptyNoteDocument(initialDocument))
     const [content] = useState(() => noteDocumentToTipTap(initialDocument))
-    const [extensions] = useState(createNoteEditorExtensions)
+    const [slashMenu, setSlashMenu] = useState<SlashMenuState>()
+    const [extensions] = useState(() => createNoteEditorExtensions(createSlashMenuRenderer(setSlashMenu)))
     const [isEmpty, setIsEmpty] = useState(startsEmpty)
 
     const editor = useEditor({
@@ -86,5 +88,5 @@ export function useNoteEditor({ initialDocument, onDocumentChange }: UseNoteEdit
         },
     })
 
-    return { editor, isEmpty }
+    return { editor, isEmpty, slashMenu }
 }
