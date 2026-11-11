@@ -5,10 +5,11 @@ const NOTE_CONTEXT_MAX_LENGTH = 2000
 
 type NoteContextFieldProps = {
     initialContext: string
+    /** Called with the whole context after every change */
+    onContextChange: (context: string) => void
 }
 
-export function NoteContextField({ initialContext }: NoteContextFieldProps) {
-    // Note: nothing is saved yet (autosave is ticket #21). The text lives only in this component and is dropped when another note opens
+export function NoteContextField({ initialContext, onContextChange }: NoteContextFieldProps) {
     const [context, setContext] = useState(initialContext)
     const fieldRef = useRef<HTMLTextAreaElement>(null)
 
@@ -26,7 +27,10 @@ export function NoteContextField({ initialContext }: NoteContextFieldProps) {
             className="notes-context"
             rows={1}
             value={context}
-            onChange={(event) => setContext(event.target.value)}
+            onChange={(event) => {
+                setContext(event.target.value)
+                onContextChange(event.target.value)
+            }}
             maxLength={NOTE_CONTEXT_MAX_LENGTH}
             placeholder="บริบทของโน้ตนี้…"
             aria-label="บริบทของโน้ต"

@@ -176,6 +176,51 @@
     font-size: 0.875rem;
 }
 
+/* Autosave status: top right, in the row of the sticky top bar (above it, z 1), under the drawer and its backdrop.
+   The mobile nesting toolbar sits at the bottom edge, so they never meet. Muted on bg 7.4:1, danger on danger-bg 7.9:1 */
+.notes-autosave {
+    position: fixed;
+    top: var(--space-2);
+    right: var(--space-4);
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-2);
+    /* Note: leaves room for the 44px sidebar button on the left of the top bar */
+    max-width: min(20rem, calc(100vw - 44px - 3 * var(--space-4)));
+    font-size: 0.875rem;
+    text-align: right;
+}
+
+.notes-autosave-status {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 var(--space-3);
+    color: var(--color-text-muted);
+    background: var(--color-bg);
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+}
+
+.notes-autosave-status[data-warning='true'] {
+    padding: var(--space-2) var(--space-3);
+    color: var(--color-danger);
+    background: var(--color-danger-bg);
+    border-color: var(--color-danger);
+}
+
+.notes-autosave-label {
+    font-weight: 600;
+}
+
+/* The secondary button floats over the page, so it needs the page color behind it (border on bg 5.1:1) */
+.notes-autosave .notes-secondary-button:not(:hover, :active) {
+    background: var(--color-bg);
+}
+
 /* The writing area: no card, no border, no divider */
 .notes-content {
     flex: 1;
