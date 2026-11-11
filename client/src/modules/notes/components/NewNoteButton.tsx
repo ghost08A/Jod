@@ -7,9 +7,11 @@ import { buildNotePath } from '../utils/shell/note-path'
 type NewNoteButtonProps = {
     /** Called after the note exists and its page is open, so the list can refresh */
     onCreated: () => void
+    /** Makes the new note a child of this note (the "add a child note" button) */
+    parentId?: string
 }
 
-export function NewNoteButton({ onCreated }: NewNoteButtonProps) {
+export function NewNoteButton({ onCreated, parentId }: NewNoteButtonProps) {
     const navigate = useNavigate()
     const [isCreating, setIsCreating] = useState(false)
     const [error, setError] = useState<ApiError | undefined>(undefined)
@@ -22,7 +24,7 @@ export function NewNoteButton({ onCreated }: NewNoteButtonProps) {
         setError(undefined)
         setIsCreating(true)
         try {
-            const note = await createNote()
+            const note = await createNote({ parentId })
             navigate(buildNotePath(note.id))
             onCreated()
         } catch (failure) {
@@ -35,9 +37,15 @@ export function NewNoteButton({ onCreated }: NewNoteButtonProps) {
 
     return (
         <div className="notes-new-note">
-            <button className="button-primary notes-new-note-button" type="button" onClick={handleCreate} disabled={isCreating} aria-busy={isCreating}>
+            <button
+                className={parentId === undefined ? 'button-primary notes-new-note-button' : 'notes-secondary-button'}
+                type="button"
+                onClick={handleCreate}
+                disabled={isCreating}
+                aria-busy={isCreating}
+            >
                 {isCreating && <span className="spinner" aria-hidden="true" />}
-                {isCreating ? 'กำลังสร้าง…' : 'New note'}
+                {isCreating ? 'กำลังสร้าง…' : parentId === undefined ? 'New note' : 'เพิ่ม Note ย่อย'}
             </button>
             {error && (
                 <div className="notes-error" role="alert">

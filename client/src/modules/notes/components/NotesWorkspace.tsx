@@ -55,7 +55,7 @@ export function NotesWorkspace() {
                     </button>
                 </header>
                 <main className="notes-main">
-                    <Outlet context={{ refreshNoteList: noteList.refresh }} />
+                    <Outlet context={{ refreshNoteList: noteList.refresh, noteListItems: noteList.items }} />
                 </main>
             </div>
         </div>

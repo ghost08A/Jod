@@ -27,6 +27,15 @@ export function useNoteList() {
         return gate.cancel
     }, [gate, load])
 
+    // Note: coming back to the tab loads again and keeps the old rows meanwhile
+    useEffect(() => {
+        function handleVisibilityChange() {
+            if (document.visibilityState === 'visible') load()
+        }
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }, [load])
+
     /** Loads again from a blank state, so the skeleton shows again (used by the retry button) */
     const retry = useCallback(() => {
         setError(undefined)

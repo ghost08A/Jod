@@ -6,7 +6,7 @@ import { useSignOut } from '../../auth/hooks/useSignOut'
 import { useNoteList } from '../hooks/useNoteList'
 import { nextFocusIndex } from '../utils/shell/next-focus-index'
 import { NewNoteButton } from './NewNoteButton'
-import { NoteList } from './NoteList'
+import { NoteTree } from './NoteTree'
 
 const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled])'
 
@@ -57,7 +57,7 @@ export function NoteSidebar({ isDrawer, isOpen, openerRef, onClose, noteList }: 
                 )}
             </div>
             <nav className="notes-sidebar-nav" aria-label="โน้ตของฉัน">
-                <NoteList items={items} error={error} isLoading={isLoading} onRetry={retry} onSelect={handleNavigated} />
+                <NoteTree items={items} error={error} isLoading={isLoading} onRetry={retry} onSelect={handleNavigated} />
             </nav>
             <SidebarFooter />
         </aside>
