@@ -1,5 +1,5 @@
 import { reissueAllBlockIds, type IdGenerator } from '../editor/block-id'
-import { isNoteDocument } from '../editor/note-document-guard'
+import { normalizeNoteDocument } from '../editor/note-document-guard'
 import type { NoteSnapshot } from './conflict-equivalence'
 import { normalizeNoteTitle } from './normalize-note-title'
 
@@ -11,9 +11,10 @@ const COPY_SUFFIX = ' (สำเนา)'
 export function copyNoteWithNewBlockIds(snapshot: NoteSnapshot, generateId?: IdGenerator): NoteSnapshot {
     const room = NOTE_TITLE_MAX_CODE_POINTS - Array.from(COPY_SUFFIX).length
     const title = `${Array.from(normalizeNoteTitle(snapshot.title)).slice(0, room).join('')}${COPY_SUFFIX}`
+    const document = normalizeNoteDocument(snapshot.content)
     return {
         title,
         context: snapshot.context,
-        content: isNoteDocument(snapshot.content) ? reissueAllBlockIds(snapshot.content, generateId) : snapshot.content,
+        content: document ? reissueAllBlockIds(document, generateId) : snapshot.content,
     }
 }

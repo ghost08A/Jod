@@ -1,10 +1,11 @@
 import { EditorContent, useEditorState } from '@tiptap/react'
 import { useEffect, useId, useState } from 'react'
+import { ErrorMessage } from '../../../shared/components/ErrorMessage'
 import { useNoteEditor } from '../hooks/useNoteEditor'
 import type { NoteDocument } from '../utils/editor/block-document'
 import { indentBlock, outdentBlock } from '../utils/editor/block-nesting'
 import { createChildInEditor, indentInEditor, outdentInEditor } from '../utils/editor/nesting-keys'
-import { isNoteDocument } from '../utils/editor/note-document-guard'
+import { normalizeNoteDocument } from '../utils/editor/note-document-guard'
 import { MobileNestingToolbar } from './MobileNestingToolbar'
 import { SlashMenu } from './SlashMenu'
 
@@ -18,14 +19,12 @@ type NoteEditorProps = {
 }
 
 export function NoteEditor({ content, onDocumentChange, isReadOnly }: NoteEditorProps) {
-    const [initialDocument] = useState(() => (isNoteDocument(content) ? content : undefined))
+    const [initialDocument] = useState(() => normalizeNoteDocument(content))
 
     if (!initialDocument) {
         // Note: the editor is not opened at all, so content it cannot read is never replaced
         return (
-            <div className="notes-error" role="alert">
-                <p>อ่านเนื้อหาของโน้ตนี้ไม่ได้</p>
-            </div>
+            <ErrorMessage styleScope="notes" message="อ่านเนื้อหาของโน้ตนี้ไม่ได้" />
         )
     }
 
