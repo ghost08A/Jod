@@ -14,3 +14,12 @@ export function listNotes(): Promise<NoteListItem[]> {
 export function getNote(noteId: string): Promise<Note> {
     return getJson<Note>(`/api/notes/${encodeURIComponent(noteId)}`)
 }
+
+/** Saves the whole note. A baseVersion other than the stored one is answered with 409 and the current note */
+export function saveNote(
+    noteId: string,
+    body: Pick<Note, 'title' | 'context' | 'content'> & { baseVersion: number },
+    keepalive = false,
+): Promise<Note> {
+    return requestJson<Note>(`/api/notes/${encodeURIComponent(noteId)}`, { method: 'PUT', body, keepalive })
+}
