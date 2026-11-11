@@ -472,4 +472,58 @@ describe('transitionAutosave', () => {
         expect(fourthAttempt.state.conflictLimitReached).toBe(true)
         expect(fourthAttempt.commands).toEqual([])
     })
+
+    it('does not report a conflict when our own in-flight save reached the server after the page was left', () => {
+        const leftDuringSave = leaveWhileSaving()
+        const afterRefetch = transitionAutosave(leftDuringSave.state, {
+            type: 'refetchSucceeded',
+            serverNote: makeServerNote(2, 'First draft'),
+            nowMs: 6_000,
+        })
+        const afterSave = transitionAutosave(afterRefetch.state, {
+            type: 'saveSucceeded',
+            newVersion: 3,
+            nowMs: 6_300,
+        })
+
+        expect(afterRefetch.state.status).toBe('saving')
+        expect(afterRefetch.commands).toEqual([
+            {
+                type: 'sendSaveRequest',
+                snapshot: makeSnapshot('Second draft typed while saving'),
+                baseVersion: 2,
+            },
+        ])
+        expect(afterSave.state.status).toBe('saved')
+        expect(afterSave.state.abandonedInFlightSnapshot).toBeUndefined()
+    })
+
+    it('still reports a conflict after leaving during a save when the server note matches nothing of ours', () => {
+        const leftDuringSave = leaveWhileSaving()
+        const afterRefetch = transitionAutosave(leftDuringSave.state, {
+            type: 'refetchSucceeded',
+            serverNote: makeServerNote(2, 'Edited in another tab'),
+            nowMs: 6_000,
+        })
+
+        expect(afterRefetch.state.status).toBe('conflict')
+        expect(afterRefetch.commands.some((command) => command.type === 'sendSaveRequest')).toBe(false)
+    })
 })
+
+/** Typing, a save in flight, more typing, then the page is hidden before the save answers */
+function leaveWhileSaving() {
+    const initial = createInitialAutosaveState(makeServerNote(1, 'Initial'))
+    const edited = transitionAutosave(initial, {
+        type: 'contentEdited',
+        snapshot: makeSnapshot('First draft'),
+        nowMs: 1_000,
+    })
+    const saving = transitionAutosave(edited.state, { type: 'debounceTimerFired', nowMs: 2_000 })
+    const editedDuringSave = transitionAutosave(saving.state, {
+        type: 'contentEdited',
+        snapshot: makeSnapshot('Second draft typed while saving'),
+        nowMs: 2_300,
+    })
+    return transitionAutosave(editedDuringSave.state, { type: 'pageLeaving', nowMs: 2_500 })
+}

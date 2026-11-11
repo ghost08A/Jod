@@ -116,6 +116,8 @@ export type AutosaveMachineState = {
     currentSnapshot: NoteSnapshot
     inFlightSnapshot: NoteSnapshot | undefined
     keepaliveSnapshot: NoteSnapshot | undefined
+    /** A normal save that was still in flight when the page was left; the server may have stored it */
+    abandonedInFlightSnapshot: NoteSnapshot | undefined
     dirtySinceMs: number | undefined
     debounceDueAtMs: number | undefined
     maxWaitDueAtMs: number | undefined
@@ -144,6 +146,7 @@ export function createInitialAutosaveState(initialNote: ServerNoteVersion): Auto
         currentSnapshot: normalized,
         inFlightSnapshot: undefined,
         keepaliveSnapshot: undefined,
+        abandonedInFlightSnapshot: undefined,
         dirtySinceMs: undefined,
         debounceDueAtMs: undefined,
         maxWaitDueAtMs: undefined,
@@ -233,6 +236,7 @@ function completeSaveSuccess(
         lastSavedSnapshot: normalizedSaved,
         inFlightSnapshot: undefined,
         keepaliveSnapshot: undefined,
+        abandonedInFlightSnapshot: undefined,
         retryAttempt: 0,
         retryDueAtMs: undefined,
         failureReason: undefined,
@@ -482,6 +486,7 @@ export function transitionAutosave(
                     status: 'unsaved',
                     inFlightSnapshot: undefined,
                     keepaliveSnapshot: snapshotToSend,
+                    abandonedInFlightSnapshot: cleanedState.inFlightSnapshot ?? cleanedState.abandonedInFlightSnapshot,
                     requiresRefetchBeforeSave: true,
                     pendingSaveAfterRefetch: false,
                 },
@@ -530,6 +535,10 @@ export function transitionAutosave(
             const matchedKeepalive =
                 state.keepaliveSnapshot !== undefined &&
                 isConflictEquivalentToSaved(state.keepaliveSnapshot, normalizedServer)
+            // Note: our own save that was in flight when the page was left may have reached the server; that is not a conflict
+            const matchedAbandonedInFlight =
+                state.abandonedInFlightSnapshot !== undefined &&
+                isConflictEquivalentToSaved(state.abandonedInFlightSnapshot, normalizedServer)
             const matchedCurrent = isConflictEquivalentToSaved(
                 state.currentSnapshot,
                 normalizedServer,
@@ -540,6 +549,7 @@ export function transitionAutosave(
                 requiresRefetchBeforeSave: false,
                 pendingSaveAfterRefetch: false,
                 keepaliveSnapshot: undefined,
+                abandonedInFlightSnapshot: undefined,
             }
 
             if (matchedCurrent) {
@@ -569,7 +579,12 @@ export function transitionAutosave(
                 }
             }
 
-            if (matchedPreviousBase || matchedKeepalive || normalizedServer.version === state.baseVersion) {
+            if (
+                matchedPreviousBase ||
+                matchedKeepalive ||
+                matchedAbandonedInFlight ||
+                normalizedServer.version === state.baseVersion
+            ) {
                 const reconciledState: AutosaveMachineState = {
                     ...baseUpdatedState,
                     baseVersion: normalizedServer.version,
@@ -658,6 +673,7 @@ export function transitionAutosave(
                     currentSnapshot: normalizedServer,
                     inFlightSnapshot: undefined,
                     keepaliveSnapshot: undefined,
+                    abandonedInFlightSnapshot: undefined,
                     dirtySinceMs: undefined,
                     retryAttempt: 0,
                     failureReason: undefined,
