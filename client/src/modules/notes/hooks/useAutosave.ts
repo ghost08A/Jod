@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useBlocker } from 'react-router'
 import { sessionCoordinator } from '../../auth/services/browser-session'
 import { createNote, getNote, saveNote } from '../services/note-service'
+import type { ConflictCopyResult, ConflictSide, CopyResult } from '../types/conflict'
 import type { Note } from '../types/note'
 import { createAutosaveController, type AutosaveView } from '../utils/autosave/autosave-controller'
 import { shouldConfirmBeforeSwitchingNote } from '../utils/autosave/autosave-decisions'
@@ -9,8 +10,6 @@ import { normalizeNoteSnapshot, type NoteSnapshot } from '../utils/autosave/conf
 import { noteToPlainText } from '../utils/autosave/note-plain-text'
 import { isSessionCloseToExpiry } from '../utils/autosave/save-request'
 import type { NoteDocument } from '../utils/editor/block-document'
-
-export type ConflictSide = 'mine' | 'theirs'
 
 const LEAVE_NOTE_MESSAGE = 'โน้ตนี้ยังบันทึกไม่เสร็จ ถ้าออกตอนนี้ ข้อความล่าสุดอาจหายได้ ต้องการออกจากโน้ตนี้หรือไม่'
 
@@ -22,8 +21,17 @@ function keepSessionFresh() {
     sessionCoordinator.refresh(session.accessToken).catch(() => undefined)
 }
 
+async function writeToClipboard(text: string): Promise<CopyResult> {
+    try {
+        await navigator.clipboard.writeText(text)
+        return 'copied'
+    } catch {
+        return 'refused'
+    }
+}
+
 /** Saves the open note by itself (see utils/autosave). This hook only connects it to the browser, the router and the API */
-export function useAutosave(note: Note, onNotesChanged: () => void) {
+export function useAutosave(note: Note, refreshNoteList: () => void) {
     const [view, setView] = useState<AutosaveView>(() => ({
         status: 'idle',
         failureReason: undefined,
@@ -34,9 +42,10 @@ export function useAutosave(note: Note, onNotesChanged: () => void) {
         conflictServerNote: undefined,
         conflictLimitReached: false,
         conflictMyNote: undefined,
+        isResolvingConflict: false,
     }))
-    const [copyResult, setCopyResult] = useState<'copied' | 'refused' | undefined>(undefined)
-    const [conflictCopy, setConflictCopy] = useState<{ side: ConflictSide; result: 'copied' | 'refused' } | undefined>(undefined)
+    const [copyResult, setCopyResult] = useState<CopyResult | undefined>(undefined)
+    const [sideCopyResult, setSideCopyResult] = useState<ConflictCopyResult | undefined>(undefined)
     const [keepBothState, setKeepBothState] = useState<'working' | 'failed' | undefined>(undefined)
     const controllerRef = useRef<ReturnType<typeof createAutosaveController>>(undefined)
 
@@ -49,7 +58,7 @@ export function useAutosave(note: Note, onNotesChanged: () => void) {
             keepSessionFresh,
             createNote,
             saveOtherNote: saveNote,
-            onNotesChanged,
+            refreshNoteList,
         })
         controllerRef.current = controller
 
@@ -78,7 +87,7 @@ export function useAutosave(note: Note, onNotesChanged: () => void) {
             controller.dispose()
             controllerRef.current = undefined
         }
-    }, [note, onNotesChanged])
+    }, [note, refreshNoteList])
 
     // Note: covers the note list, the drawer, New note and the browser back button. Going to /login is never
     // blocked: the session is gone and the sign-in page replaces this one whatever the answer
@@ -104,23 +113,13 @@ export function useAutosave(note: Note, onNotesChanged: () => void) {
     const copyContent = useCallback(async () => {
         const snapshot = controllerRef.current?.getCurrentSnapshot()
         if (!snapshot) return
-        try {
-            await navigator.clipboard.writeText(noteToPlainText(snapshot))
-            setCopyResult('copied')
-        } catch {
-            setCopyResult('refused')
-        }
+        setCopyResult(await writeToClipboard(noteToPlainText(snapshot)))
     }, [])
 
-    const copyConflictSide = useCallback(async (side: ConflictSide) => {
+    const copySide = useCallback(async (side: ConflictSide) => {
         const snapshot: NoteSnapshot | undefined = side === 'mine' ? view.conflictMyNote : view.conflictServerNote
         if (!snapshot) return
-        try {
-            await navigator.clipboard.writeText(noteToPlainText(snapshot))
-            setConflictCopy({ side, result: 'copied' })
-        } catch {
-            setConflictCopy({ side, result: 'refused' })
-        }
+        setSideCopyResult({ side, result: await writeToClipboard(noteToPlainText(snapshot)) })
     }, [view.conflictMyNote, view.conflictServerNote])
     const keepMine = useCallback(() => controllerRef.current?.keepMine(), [])
     const takeTheirs = useCallback(() => controllerRef.current?.takeTheirs(), [])
@@ -138,6 +137,6 @@ export function useAutosave(note: Note, onNotesChanged: () => void) {
         editContent,
         retry,
         copyContent,
-        conflict: { conflictCopy, keepBothState, copyConflictSide, keepMine, takeTheirs, keepBoth },
+        conflict: { sideCopyResult, keepBothState, copySide, keepMine, takeTheirs, keepBoth },
     }
 }

@@ -1,19 +1,40 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
 import { ErrorMessage } from '../../../shared/components/ErrorMessage'
-import type { ConflictSide } from '../hooks/useAutosave'
+import type { ConflictCopyResult, ConflictSide } from '../types/conflict'
 import type { NoteSnapshot } from '../utils/autosave/conflict-equivalence'
+import { sideForTabKey } from '../utils/autosave/conflict-tab-keys'
 import { ConflictConfirmDialog } from './ConflictConfirmDialog'
 import { NoteEditor } from './NoteEditor'
 
 const SIDE_LABELS: Record<ConflictSide, string> = { mine: 'ฉบับในแท็บนี้', theirs: 'ฉบับอีกแท็บ' }
 const SIDES: ConflictSide[] = ['mine', 'theirs']
 
+// Note: keyed by the version the user wants to use; the other version is the one that is lost, so it is the one offered for copying
+const CONFIRM_DIALOGS: Record<ConflictSide, { title: string; copyLabel: string; confirmLabel: string; warning: string; lostSide: ConflictSide }> = {
+    mine: {
+        title: 'ใช้ฉบับนี้ทับฉบับอีกแท็บ?',
+        copyLabel: 'คัดลอกฉบับอีกแท็บ',
+        confirmLabel: 'ใช้ฉบับนี้',
+        warning: 'ฉบับอีกแท็บจะถูกแทนที่ด้วยฉบับในแท็บนี้ และเอากลับมาไม่ได้ ถ้ายังต้องการข้อความของฉบับอีกแท็บ ให้คัดลอกไว้ก่อน',
+        lostSide: 'theirs',
+    },
+    theirs: {
+        title: 'ใช้ฉบับอีกแท็บ?',
+        copyLabel: 'คัดลอกฉบับในแท็บนี้',
+        confirmLabel: 'ใช้ฉบับอีกแท็บ',
+        warning: 'สิ่งที่แก้ในแท็บนี้จะหายไป และเอากลับมาไม่ได้ ถ้ายังต้องการข้อความนี้ ให้คัดลอกไว้ก่อน',
+        lostSide: 'mine',
+    },
+}
+
 type ConflictPageProps = {
     mine: NoteSnapshot
     theirs: NoteSnapshot
     /** "Use this version" collided 3 times in a row */
     isLimitReached: boolean
-    copyResult: { side: ConflictSide; result: 'copied' | 'refused' } | undefined
+    /** "Use this version" is being saved: every choice is locked until the answer comes back */
+    isResolving: boolean
+    copyResult: ConflictCopyResult | undefined
     keepBothState: 'working' | 'failed' | undefined
     onCopy: (side: ConflictSide) => void
     onKeepMine: () => void
@@ -33,6 +54,7 @@ export function ConflictPage({
     mine,
     theirs,
     isLimitReached,
+    isResolving,
     copyResult,
     keepBothState,
     onCopy,
@@ -43,14 +65,13 @@ export function ConflictPage({
     const [activeSide, setActiveSide] = useState<ConflictSide>('mine')
     const [confirming, setConfirming] = useState<ConflictSide | undefined>(undefined)
     const tabRefs = useRef<Partial<Record<ConflictSide, HTMLButtonElement | null>>>({})
-    const isWorking = keepBothState === 'working'
+    const isKeepingBoth = keepBothState === 'working'
+    const isWorking = isKeepingBoth || isResolving
     const versions: Record<ConflictSide, NoteSnapshot> = { mine, theirs }
 
     // Note: WAI-ARIA tabs: arrows (and Home/End) move between the two tabs; only the selected tab is in the Tab order
     function handleTabKeyDown(event: KeyboardEvent) {
-        const nextSide = { ArrowLeft: 'mine', ArrowUp: 'mine', Home: 'mine', ArrowRight: 'theirs', ArrowDown: 'theirs', End: 'theirs' }[
-            event.key
-        ] as ConflictSide | undefined
+        const nextSide = sideForTabKey(event.key)
         if (!nextSide) return
         event.preventDefault()
         setActiveSide(nextSide)
@@ -138,42 +159,33 @@ export function ConflictPage({
                 >
                     ใช้ฉบับอีกแท็บ
                 </button>
-                <button className="button-primary notes-conflict-button" type="button" onClick={onKeepBoth} disabled={isWorking} aria-busy={isWorking}>
-                    {isWorking && <span className="spinner" aria-hidden="true" />}
-                    {isWorking ? 'กำลังสร้างสำเนา…' : 'เก็บทั้งสอง'}
+                <button className="button-primary notes-conflict-button" type="button" onClick={onKeepBoth} disabled={isWorking} aria-busy={isKeepingBoth}>
+                    {isKeepingBoth && <span className="spinner" aria-hidden="true" />}
+                    {isKeepingBoth ? 'กำลังสร้างสำเนา…' : 'เก็บทั้งสอง'}
                 </button>
             </div>
-
-            {confirming === 'mine' && (
-                <ConflictConfirmDialog
-                    title="ใช้ฉบับนี้ทับฉบับอีกแท็บ?"
-                    copyLabel="คัดลอกฉบับอีกแท็บ"
-                    copyMessage={copyMessageFor('theirs', copyResult)}
-                    confirmLabel="ใช้ฉบับนี้"
-                    onCopy={() => onCopy('theirs')}
-                    onConfirm={() => {
-                        setConfirming(undefined)
-                        onKeepMine()
-                    }}
-                    onCancel={() => setConfirming(undefined)}
-                >
-                    ฉบับอีกแท็บจะถูกแทนที่ด้วยฉบับในแท็บนี้ และเอากลับมาไม่ได้ ถ้ายังต้องการข้อความของฉบับอีกแท็บ ให้คัดลอกไว้ก่อน
-                </ConflictConfirmDialog>
+            {isResolving && (
+                <p className="notes-conflict-saving" role="status">
+                    <span className="spinner" aria-hidden="true" />
+                    กำลังบันทึก…
+                </p>
             )}
-            {confirming === 'theirs' && (
+
+            {confirming && (
                 <ConflictConfirmDialog
-                    title="ใช้ฉบับอีกแท็บ?"
-                    copyLabel="คัดลอกฉบับในแท็บนี้"
-                    copyMessage={copyMessageFor('mine', copyResult)}
-                    confirmLabel="ใช้ฉบับอีกแท็บ"
-                    onCopy={() => onCopy('mine')}
+                    title={CONFIRM_DIALOGS[confirming].title}
+                    copyLabel={CONFIRM_DIALOGS[confirming].copyLabel}
+                    copyMessage={copyMessageFor(CONFIRM_DIALOGS[confirming].lostSide, copyResult)}
+                    confirmLabel={CONFIRM_DIALOGS[confirming].confirmLabel}
+                    onCopy={() => onCopy(CONFIRM_DIALOGS[confirming].lostSide)}
                     onConfirm={() => {
                         setConfirming(undefined)
-                        onTakeTheirs()
+                        if (confirming === 'mine') onKeepMine()
+                        else onTakeTheirs()
                     }}
                     onCancel={() => setConfirming(undefined)}
                 >
-                    สิ่งที่แก้ในแท็บนี้จะหายไป และเอากลับมาไม่ได้ ถ้ายังต้องการข้อความนี้ ให้คัดลอกไว้ก่อน
+                    {CONFIRM_DIALOGS[confirming].warning}
                 </ConflictConfirmDialog>
             )}
         </section>

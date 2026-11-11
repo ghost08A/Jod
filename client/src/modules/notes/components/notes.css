@@ -720,6 +720,12 @@
     gap: var(--space-3);
 }
 
+.notes-conflict-saving {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
 /* At least 48px tall, so a finger can hit them */
 .notes-conflict-button,
 .notes-conflict-tab {

@@ -251,7 +251,7 @@ describe('createAutosaveController: conflict choices', () => {
         const saveNote = vi.fn<(body: { baseVersion: number; title: string; content: unknown }, keepalive: boolean) => Promise<{ version: number }>>()
         const createNote = vi.fn<() => Promise<{ id: string; version: number }>>()
         const saveOtherNote = vi.fn<(noteId: string, body: { title: string; baseVersion: number; content: unknown }) => Promise<unknown>>()
-        const onNotesChanged = vi.fn<() => void>()
+        const refreshNoteList = vi.fn<() => void>()
         const views: AutosaveView[] = []
         const controller = createAutosaveController({
             initialNote,
@@ -260,10 +260,10 @@ describe('createAutosaveController: conflict choices', () => {
             onViewChange: (view) => views.push(view),
             createNote,
             saveOtherNote,
-            onNotesChanged,
+            refreshNoteList,
         })
         const lastView = () => views.at(-1)
-        return { controller, saveNote, createNote, saveOtherNote, onNotesChanged, lastView }
+        return { controller, saveNote, createNote, saveOtherNote, refreshNoteList, lastView }
     }
 
     async function enterConflict(context: ReturnType<typeof setupConflict>) {
@@ -323,6 +323,42 @@ describe('createAutosaveController: conflict choices', () => {
         expect(context.lastView()?.conflictLimitReached).toBe(true)
     })
 
+    it('keepMine keeps showing both versions while the save is in flight, then clears after success', async () => {
+        const context = setupConflict()
+        await enterConflict(context)
+        expect(context.lastView()?.isResolvingConflict).toBe(false)
+        let resolveSave: (saved: { version: number }) => void = () => undefined
+        context.saveNote.mockReturnValueOnce(new Promise((resolve) => (resolveSave = resolve)))
+
+        context.controller.keepMine()
+
+        expect(context.lastView()?.status).toBe('saving')
+        expect(context.lastView()?.isResolvingConflict).toBe(true)
+        expect(context.lastView()?.conflictMyNote?.title).toBe('Mine')
+        expect(context.lastView()?.conflictServerNote?.title).toBe('Other tab')
+
+        resolveSave({ version: 6 })
+        await vi.advanceTimersByTimeAsync(0)
+        expect(context.lastView()?.status).toBe('saved')
+        expect(context.lastView()?.isResolvingConflict).toBe(false)
+        expect(context.lastView()?.conflictMyNote).toBeUndefined()
+    })
+
+    it('keepMine goes back to the conflict on a new 409 with the flag cleared and the count kept', async () => {
+        const context = setupConflict()
+        await enterConflict(context)
+        context.saveNote.mockRejectedValueOnce(conflictOf(6, 'Server 1'))
+
+        context.controller.keepMine()
+        await vi.advanceTimersByTimeAsync(0)
+
+        expect(context.lastView()?.status).toBe('conflict')
+        expect(context.lastView()?.isResolvingConflict).toBe(false)
+        expect(context.lastView()?.conflictMyNote?.title).toBe('Mine')
+        expect(context.lastView()?.conflictServerNote?.title).toBe('Server 1')
+        expect(context.lastView()?.conflictLimitReached).toBe(false)
+    })
+
     it('takeTheirs drops the local text, takes the server note and reloads the fields', async () => {
         const context = setupConflict()
         await enterConflict(context)
@@ -354,7 +390,7 @@ describe('createAutosaveController: conflict choices', () => {
         expect(sent.blocks[0]?.text).toBe('mine')
         expect(context.lastView()?.status).toBe('idle')
         expect(context.lastView()?.loadedNote.title).toBe('Other tab')
-        expect(context.onNotesChanged).toHaveBeenCalledTimes(1)
+        expect(context.refreshNoteList).toHaveBeenCalledTimes(1)
     })
 
     it('keepBoth stays in the conflict with the tab version when the new note cannot be created', async () => {
@@ -368,7 +404,7 @@ describe('createAutosaveController: conflict choices', () => {
         expect(context.saveOtherNote).not.toHaveBeenCalled()
         expect(context.lastView()?.status).toBe('conflict')
         expect(context.controller.getCurrentSnapshot().title).toBe('Mine')
-        expect(context.onNotesChanged).toHaveBeenCalledTimes(1)
+        expect(context.refreshNoteList).toHaveBeenCalledTimes(1)
     })
 
     it('keepBoth stays in the conflict when the text cannot be saved into the new note, and still refreshes the list', async () => {
@@ -382,7 +418,7 @@ describe('createAutosaveController: conflict choices', () => {
         expect(isDone).toBe(false)
         expect(context.lastView()?.status).toBe('conflict')
         expect(context.controller.getCurrentSnapshot().content).toEqual(documentWith('mine'))
-        expect(context.onNotesChanged).toHaveBeenCalledTimes(1)
+        expect(context.refreshNoteList).toHaveBeenCalledTimes(1)
     })
 
     it('keepBoth ignores a second call while the first is still running', async () => {

@@ -29,8 +29,10 @@ export type AutosaveView = {
     conflictServerNote: ServerNoteVersion | undefined
     /** "Use this version" collided 3 times in a row, so it is not offered again */
     conflictLimitReached: boolean
-    /** The latest text on this tab (cleaned). Set only while status is 'conflict', and it cannot change then */
+    /** The latest text on this tab (cleaned). Set while status is 'conflict' or "Use this version" is saving, and it cannot change then */
     conflictMyNote: NoteSnapshot | undefined
+    /** "Use this version" is being saved, so the conflict page stays up (locked) until the answer comes back */
+    isResolvingConflict: boolean
 }
 
 type AutosaveControllerOptions = {
@@ -45,7 +47,7 @@ type AutosaveControllerOptions = {
     createNote?: () => Promise<{ id: string; version: number }>
     saveOtherNote?: (noteId: string, body: ReturnType<typeof toSaveNoteBody>) => Promise<unknown>
     /** Called after "keep both" tried to create a note, whatever the result, so the note list can refresh */
-    onNotesChanged?: () => void
+    refreshNoteList?: () => void
 }
 
 const TIMER_EVENTS = {
@@ -66,7 +68,7 @@ export function createAutosaveController({
     keepSessionFresh,
     createNote,
     saveOtherNote,
-    onNotesChanged,
+    refreshNoteList,
 }: AutosaveControllerOptions) {
     let state = createInitialAutosaveState(initialNote)
     const timers: Partial<Record<AutosaveTimerKind, ReturnType<typeof setTimeout>>> = {}
@@ -79,6 +81,7 @@ export function createAutosaveController({
     let isKeepingBoth = false
 
     function publish() {
+        const isResolvingConflict = state.isConflictResolutionSave
         if (state.status === 'saved' || state.status === 'idle') isTooLargeForKeepalive = false
         if (shouldConfirmBeforeSwitchingNote(state.status)) keepSessionFresh?.()
         onViewChange({
@@ -90,7 +93,8 @@ export function createAutosaveController({
             loadedRevision,
             conflictServerNote: state.conflictServerNote,
             conflictLimitReached: state.conflictLimitReached,
-            conflictMyNote: state.status === 'conflict' ? state.currentSnapshot : undefined,
+            conflictMyNote: state.status === 'conflict' || isResolvingConflict ? state.currentSnapshot : undefined,
+            isResolvingConflict,
         })
     }
 
@@ -233,7 +237,7 @@ export function createAutosaveController({
                 return false
             } finally {
                 isKeepingBoth = false
-                onNotesChanged?.()
+                refreshNoteList?.()
             }
         },
         getStatus(): AutosaveStatus {

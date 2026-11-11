@@ -103,9 +103,10 @@ function LoadedNotePage({ note }: { note: Note }) {
                         mine={conflictMyNote}
                         theirs={conflictServerNote}
                         isLimitReached={view.conflictLimitReached}
-                        copyResult={conflict.conflictCopy}
+                        isResolving={view.isResolvingConflict}
+                        copyResult={conflict.sideCopyResult}
                         keepBothState={conflict.keepBothState}
-                        onCopy={conflict.copyConflictSide}
+                        onCopy={conflict.copySide}
                         onKeepMine={conflict.keepMine}
                         onTakeTheirs={conflict.takeTheirs}
                         onKeepBoth={conflict.keepBoth}
