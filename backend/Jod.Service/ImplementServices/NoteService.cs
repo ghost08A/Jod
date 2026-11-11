@@ -24,6 +24,9 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
     {
         var content = request.Content ?? ParseContent(NoteContentValidator.EmptyContentJson);
         NoteContentValidator.Validate(content, Limits);
+        var (placement, position) = request.ParentId is { } parentId
+            ? (NotePlacement.Child, await NextChildPositionAsync(userId, parentId))
+            : (NotePlacement.Unplaced, 0);
         var now = Now();
         var note = new Note
         {
@@ -35,6 +38,9 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
             Version = 1,
             CreatedAt = now,
             UpdatedAt = now,
+            Placement = placement,
+            ParentId = request.ParentId,
+            Position = position,
         };
         database.Notes.Add(note);
         await database.SaveChangesAsync();
@@ -45,7 +51,15 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
         database.Notes.AsNoTracking()
             .Where(note => note.OwnerId == userId)
             .OrderByDescending(note => note.UpdatedAt)
-            .Select(note => new NoteListItemViewModel { Id = note.Id, Title = note.Title, UpdatedAt = note.UpdatedAt })
+            .Select(note => new NoteListItemViewModel
+            {
+                Id = note.Id,
+                Title = note.Title,
+                UpdatedAt = note.UpdatedAt,
+                Placement = note.Placement,
+                ParentId = note.ParentId,
+                Position = note.Position,
+            })
             .ToListAsync();
 
     public async Task<NoteViewModel> GetAsync(Guid userId, Guid noteId)
@@ -87,10 +101,10 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
         }
 
         // Note: built from what was just written (not read back) so a save that follows ours cannot change this answer.
-        // CreatedAt never changes after the note is made
-        var createdAt = await database.Notes.AsNoTracking()
+        // CreatedAt never changes after the note is made; a save does not write the structure, so it is read here
+        var kept = await database.Notes.AsNoTracking()
             .Where(note => note.Id == noteId && note.OwnerId == userId)
-            .Select(note => note.CreatedAt)
+            .Select(note => new { note.CreatedAt, note.Placement, note.ParentId, note.Position })
             .SingleAsync();
         return new NoteViewModel
         {
@@ -99,9 +113,38 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
             Context = noteContext,
             Content = ParseContent(contentText),
             Version = baseVersion + 1,
-            CreatedAt = createdAt,
+            CreatedAt = kept.CreatedAt,
             UpdatedAt = now,
+            Placement = kept.Placement,
+            ParentId = kept.ParentId,
+            Position = kept.Position,
         };
+    }
+
+    private const int MaxAncestors = 200;
+
+    // Note: the parent must be the caller's own note (a foreign or missing one is a 404) and the new child may have
+    // at most MaxAncestors ancestors. The walk is a loop that stops at the cap, so a cycle in corrupt data cannot run forever.
+    // Two creates at the same moment can give two siblings the same position
+    private async Task<int> NextChildPositionAsync(Guid userId, Guid parentId)
+    {
+        var parent = await database.Notes.AsNoTracking()
+            .Where(note => note.Id == parentId && note.OwnerId == userId)
+            .Select(note => new { note.ParentId })
+            .SingleOrDefaultAsync() ?? throw NotFound();
+        var ancestors = 1; // the parent itself
+        for (var next = parent.ParentId; next is { } id; ancestors++)
+        {
+            if (ancestors >= MaxAncestors)
+            {
+                throw new CustomError("โน้ตย่อยซ้อนลึกเกินไป");
+            }
+            next = await database.Notes.AsNoTracking().Where(note => note.Id == id).Select(note => note.ParentId).SingleOrDefaultAsync();
+        }
+        var last = await database.Notes.AsNoTracking()
+            .Where(note => note.OwnerId == userId && note.ParentId == parentId)
+            .MaxAsync(note => (int?)note.Position);
+        return last is { } position ? position + 1 : 0;
     }
 
     private Task<Note?> FindOwnedNoteAsync(Guid userId, Guid noteId) =>
@@ -128,5 +171,8 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
         Version = note.Version,
         CreatedAt = note.CreatedAt,
         UpdatedAt = note.UpdatedAt,
+        Placement = note.Placement,
+        ParentId = note.ParentId,
+        Position = note.Position,
     };
 }

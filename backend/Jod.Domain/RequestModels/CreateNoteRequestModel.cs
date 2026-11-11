@@ -11,4 +11,7 @@ public class CreateNoteRequestModel
 
     /// <summary>The block document, validated by the Service. Null means an empty document.</summary>
     public JsonElement? Content { get; set; }
+
+    /// <summary>The note to put the new note under, as its last child. Null means Unplaced.</summary>
+    public Guid? ParentId { get; set; }
 }
