@@ -1,8 +1,8 @@
 import { useEffect, useState, type RefObject } from 'react'
 import { Link } from 'react-router'
-import { ApiError, toApiError } from '../../../core/http/api-error'
-import { useAuth } from '../../auth/hooks/useAuth'
+import { ErrorMessage } from '../../../shared/components/ErrorMessage'
 import { useCurrentUser } from '../../auth/hooks/useCurrentUser'
+import { useSignOut } from '../../auth/hooks/useSignOut'
 import { useNoteList } from '../hooks/useNoteList'
 import { nextFocusIndex } from '../utils/shell/next-focus-index'
 import { NewNoteButton } from './NewNoteButton'
@@ -98,24 +98,9 @@ function useDrawerBehavior(panel: HTMLElement | null, openerRef: RefObject<HTMLE
     }, [panel, openerRef, onClose])
 }
 
-// Note: the sign-out handling mirrors AccountPage (same useAuth().logout, same error and spinner behavior)
 function SidebarFooter() {
-    const { logout } = useAuth()
     const { user, error } = useCurrentUser()
-    const [isSigningOut, setIsSigningOut] = useState(false)
-    const [signOutError, setSignOutError] = useState<ApiError | undefined>(undefined)
-
-    async function handleSignOut() {
-        setSignOutError(undefined)
-        setIsSigningOut(true)
-        try {
-            await logout()
-        } catch (failure) {
-            setSignOutError(failure instanceof ApiError ? failure : toApiError(0, undefined))
-            setIsSigningOut(false)
-        }
-    }
-
+    const { signOut, isSigningOut, error: signOutError } = useSignOut()
     const shownError = error ?? signOutError
 
     return (
@@ -127,13 +112,8 @@ function SidebarFooter() {
             ) : (
                 !error && <span className="skeleton" aria-label="กำลังโหลด" role="status" />
             )}
-            {shownError && (
-                <div className="notes-error" role="alert">
-                    <p>{shownError.message}</p>
-                    {shownError.reference && <p className="notes-error-reference">รหัสอ้างอิง: {shownError.reference}</p>}
-                </div>
-            )}
-            <button className="notes-secondary-button" type="button" onClick={handleSignOut} disabled={isSigningOut} aria-busy={isSigningOut}>
+            {shownError && <ErrorMessage styleScope="notes" message={shownError.message} reference={shownError.reference} />}
+            <button className="notes-secondary-button" type="button" onClick={signOut} disabled={isSigningOut} aria-busy={isSigningOut}>
                 {isSigningOut && <span className="spinner" aria-hidden="true" />}
                 {isSigningOut ? 'กำลังออกจากระบบ…' : 'ออกจากระบบ'}
             </button>

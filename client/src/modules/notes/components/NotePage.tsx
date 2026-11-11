@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Link, useOutletContext, useParams } from 'react-router'
+import { ErrorMessage } from '../../../shared/components/ErrorMessage'
 import { useAutosave } from '../hooks/useAutosave'
 import { useNote } from '../hooks/useNote'
 import type { Note } from '../types/note'
@@ -73,10 +74,7 @@ export function NotePage() {
     if (error || !note) {
         return (
             <div className="notes-page">
-                <div className="notes-error" role="alert">
-                    <p>{error?.message}</p>
-                    {error?.reference && <p className="notes-error-reference">รหัสอ้างอิง: {error.reference}</p>}
-                </div>
+                <ErrorMessage styleScope="notes" message={error?.message} reference={error?.reference} />
                 <button className="button-primary" type="button" onClick={retry}>
                     ลองอีกครั้ง
                 </button>

@@ -1,4 +1,5 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
+import { ErrorMessage } from '../../../shared/components/ErrorMessage'
 import type { ConflictSide } from '../hooks/useAutosave'
 import type { NoteSnapshot } from '../utils/autosave/conflict-equivalence'
 import { ConflictConfirmDialog } from './ConflictConfirmDialog'
@@ -111,14 +112,13 @@ export function ConflictPage({
             </div>
 
             {isLimitReached && (
-                <div className="notes-error" role="alert">
-                    <p>ฉบับในแท็บนี้ชนกับฉบับอีกแท็บซ้ำหลายครั้งแล้ว จึงหยุดลองให้ ถ้ายังต้องการเก็บข้อความนี้ ให้เลือก "เก็บทั้งสอง" หรือคัดลอกไว้ก่อน</p>
-                </div>
+                <ErrorMessage
+                    styleScope="notes"
+                    message={'ฉบับในแท็บนี้ชนกับฉบับอีกแท็บซ้ำหลายครั้งแล้ว จึงหยุดลองให้ ถ้ายังต้องการเก็บข้อความนี้ ให้เลือก "เก็บทั้งสอง" หรือคัดลอกไว้ก่อน'}
+                />
             )}
             {keepBothState === 'failed' && (
-                <div className="notes-error" role="alert">
-                    <p>สร้างโน้ตสำเนาไม่สำเร็จ ฉบับในแท็บนี้ยังอยู่ครบ ลองอีกครั้ง หรือคัดลอกไว้ก่อน</p>
-                </div>
+                <ErrorMessage styleScope="notes" message="สร้างโน้ตสำเนาไม่สำเร็จ ฉบับในแท็บนี้ยังอยู่ครบ ลองอีกครั้ง หรือคัดลอกไว้ก่อน" />
             )}
 
             <div className="notes-conflict-actions">
