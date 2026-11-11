@@ -11,6 +11,7 @@ This file provides guidance to AI coding agents (Claude Code, Codex, etc.) when 
 - PostgreSQL 16 through EF Core (Npgsql provider, ADR 0004). `JodDbContext` and the migrations live in `Jod.Service`
 - Authentication: **Google Sign-In only** (ADR 0006). The backend verifies the Google ID token itself (signature, `aud`, `iss`, `exp`, `email_verified`), identifies the user by the Google `sub` and never trusts identity data sent by the frontend. Jod then issues its own JWT access token (15 minutes, held in memory by the client) and a rotating refresh token in an HttpOnly cookie. Only emails on the allowed list may sign in (closed group, default deny). There are no passwords, no email verification or reset links, and Jod sends no email
 - **Current code (checked 2026-10-21):** Google Sign-In is the only way in and it is implemented: `POST /api/auth/google` (`AuthController`), `IAuthService.SignInWithGoogleAsync`, `IGoogleIdTokenVerifier` (real class `GoogleIdTokenVerifier` wraps `Google.Apis.Auth`), `GoogleOptions` (`Google:ClientId`) and `AccessOptions` (`Access:AllowedEmails`). The users table is the simple `Users` table (`AppUser`: `Id`, `GoogleSubject` unique, `Email`, `CreatedAt`), not ASP.NET Core Identity. **Checked only with a fake verifier in tests**: a token really signed by Google has not been verified against the real class yet (manual check, spec 1a acceptance criterion 17)
+- **Notes (checked 2026-11-11):** `Notes` table (migration `AddNotes`, `Content` is `jsonb` mapped as a string), `NotesController` (`POST/GET /api/notes`, `GET/PUT /api/notes/{id}`), `INoteService`/`NoteService`, `NoteContentValidator` (static, iterative, in `Jod.Service/Helper`), `NoteOptions`. Save is a whole-note `PUT` with `baseVersion`; the version check and the write are one conditional `ExecuteUpdateAsync`; a stale version answers 409 with the current note in the `payload` member. Another user's note and a missing note both answer 404 (`ErrorKind.NotFound`)
 - Never bring back passwords, email verification or reset links, email sending, or an "open registration" mode. Jod has none of them (ADR 0006). Email is used only as data: the allowed list, the address shown to the user, and the Share Link rule
 - Session design: JWT access token issue and validation, rotating refresh token, the `jod_refresh` cookie, the `X-Requested-With` check, the fallback "sign-in required" policy, the rate limiter, the error handler
 - Every endpoint needs sign-in unless it carries `[AllowAnonymous]` (fallback authorization policy), so a new endpoint is protected without anyone remembering to protect it
@@ -82,29 +83,29 @@ A `CustomError` thrown anywhere below is turned into a 4xx problem by the middle
 
 ## Project Structure
 
-The folders below exist because code lives in them. `Jod.Service/Helper` is empty and holds a `.gitkeep` until first used.
+The folders below exist because code lives in them. `Jod.Service/Helper` holds `NoteContentValidator`.
 Repo root also holds `docker-compose.yml` (PostgreSQL for development), `.env.example`, `.config/dotnet-tools.json` (the `dotnet-ef` tool) and `.github/workflows/ci.yml`.
 
 ```
 backend/
 ├── Jod.slnx
 ├── Jod.Domain/
-│   ├── Enums/                 # ErrorKind (what a CustomError means: validation, unauthorized, forbidden, conflict, unavailable)
-│   ├── Interfaces/            # IAuthService, IGoogleIdTokenVerifier
+│   ├── Enums/                 # ErrorKind (what a CustomError means: validation, unauthorized, forbidden, not found, conflict, unavailable)
+│   ├── Interfaces/            # IAuthService, IGoogleIdTokenVerifier, INoteService
 │   ├── Models/                # AuthSessionModel, GoogleIdentity (between layers only)
-│   ├── RequestModels/         # GoogleSignInRequestModel (only the Google credential)
-│   ├── ViewModels/            # AuthResultViewModel, UserViewModel
+│   ├── RequestModels/         # GoogleSignInRequestModel (only the Google credential), CreateNoteRequestModel, UpdateNoteRequestModel
+│   ├── ViewModels/            # AuthResultViewModel, UserViewModel, NoteViewModel, NoteListItemViewModel
 │   └── CustomError.cs         # business error: Messages + Kind
 ├── Jod.Service/
-│   ├── Data/                  # JodDbContext, AppUser (Google sub + email), RefreshToken
-│   ├── ImplementServices/     # AuthService, GoogleIdTokenVerifier (the real Google check)
+│   ├── Data/                  # JodDbContext, AppUser (Google sub + email), RefreshToken, Note
+│   ├── ImplementServices/     # AuthService, GoogleIdTokenVerifier (the real Google check), NoteService
 │   ├── Migrations/            # EF Core migrations (generated, see Database rules)
-│   ├── Options/               # JwtOptions, GoogleOptions (client id), AccessOptions (allowed emails)
-│   └── Helper/
+│   ├── Options/               # JwtOptions, GoogleOptions (client id), AccessOptions (allowed emails), NoteOptions
+│   └── Helper/                # NoteContentValidator
 ├── Jod.Service.Tests/         # unit tests: xUnit + Moq, pure logic, no database
 ├── Jod.Integration.Tests/     # S1 seam: the real app + a real PostgreSQL, called over HTTP
 └── Web.Jod/
-    ├── Controllers/           # AuthController (google, refresh, logout, me)
+    ├── Controllers/           # AuthController (google, refresh, logout, me), NotesController
     ├── Extensions/            # ClaimsPrincipalExtensions (GetUserId)
     ├── Middleware/            # ApiExceptionHandler, ErrorResponses
     ├── Properties/launchSettings.json
@@ -181,7 +182,7 @@ ex.ThrowIfAny();
 - Keep API response format consistent with existing endpoints
 - DO NOT change route names, request models, or response models unless required
 - Return meaningful error messages without exposing sensitive internal details
-- Never put a token (Google ID token, access token, refresh token), an email or the contents of a request into a response body, a log line or an exception message. The refresh token travels only in the `jod_refresh` cookie
+- Never put a token (Google ID token, access token, refresh token), an email or the contents of a request into a log line or an exception message. A response body must not echo request contents either, with one exception: a 409 may carry the signed-in user's own current note, read from the database, in `payload`. That payload must never be written to a log. The refresh token travels only in the `jod_refresh` cookie
 - Endpoints that sign in, renew or end a session (`/api/auth/google`, `/api/auth/refresh`, `/api/auth/logout`) require the header `X-Requested-With: jod`, so a page on another site cannot trigger them with the cookie
 - Never read a name, email or Google id from the request body to decide who the user is. Identity comes only from the verified ID token (Google `sub`); the email is information that is refreshed at every sign-in, never a key
 - Rate limits are per IP address in two buckets: `auth` (sign-in endpoint, 10 a minute) and `refresh` (60 a minute). Add `[EnableRateLimiting("...")]` to a new sign-in style endpoint. The `auth` bucket is attached to `POST /api/auth/google`
