@@ -1,6 +1,9 @@
 import { lazy, Suspense } from 'react'
 import { Link, useParams } from 'react-router'
+import { useAutosave } from '../hooks/useAutosave'
 import { useNote } from '../hooks/useNote'
+import type { Note } from '../types/note'
+import { AutosaveStatusIndicator } from './AutosaveStatusIndicator'
 import { NoteContextField } from './NoteContextField'
 import { NoteTitleField } from './NoteTitleField'
 
@@ -73,13 +76,23 @@ export function NotePage() {
         )
     }
 
+    // Note: keyed by id, so another note starts with fresh fields, editor and autosave
+    return <LoadedNotePage key={note.id} note={note} />
+}
+
+function LoadedNotePage({ note }: { note: Note }) {
+    const { view, copyResult, editTitle, editContext, editContent, retry, copyContent } = useAutosave(note)
+    const { loadedNote, loadedRevision } = view
+
+    // Note: the fields and the editor read their text once. When a newer note came from the server (only while
+    // nothing here was edited), the revision key opens them again with that text
     return (
-        <article className="notes-page" key={note.id}>
-            <NoteTitleField initialTitle={note.title} />
-            <NoteContextField initialContext={note.context} />
-            {/* Note: onDocumentChange is not passed yet; ticket #21 (autosave) connects it. Nothing is saved in this round */}
+        <article className="notes-page">
+            <AutosaveStatusIndicator view={view} copyResult={copyResult} onRetry={retry} onCopy={copyContent} />
+            <NoteTitleField key={`title-${loadedRevision}`} initialTitle={loadedNote.title} onTitleChange={editTitle} />
+            <NoteContextField key={`context-${loadedRevision}`} initialContext={loadedNote.context} onContextChange={editContext} />
             <Suspense fallback={<NoteEditorSkeleton />}>
-                <NoteEditor content={note.content} />
+                <NoteEditor key={`editor-${loadedRevision}`} content={loadedNote.content} onDocumentChange={editContent} />
             </Suspense>
         </article>
     )
