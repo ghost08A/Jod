@@ -59,3 +59,18 @@ export type TrashBranch = {
     item: TrashNoteItem
     children: TrashBranch[]
 }
+
+export type NoteSearchResult = {
+    id: string
+    title: string
+    updatedAt: string
+    /** Ancestor titles, top-down; empty for a top-level note */
+    path: { id: string; title: string }[]
+    /** About 100 characters of the note text around the first match; may hold line breaks */
+    snippet: string
+}
+
+export type NoteSearchPage = {
+    items: NoteSearchResult[]
+    hasMore: boolean
+}
