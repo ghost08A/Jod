@@ -65,7 +65,7 @@ export function NoteSidebar({ isDrawer, isOpen, openerRef, onClose, noteList }: 
             <NoteSearchBox value={searchText} onChange={setSearchText} />
             {/* Note: the tree is hidden, not removed, while searching, so its open branches and scroll position stay as they were */}
             <nav className="notes-sidebar-nav" aria-label="โน้ตของฉัน" hidden={isSearching}>
-                <NoteTree items={items} error={error} isLoading={isLoading} onRetry={retry} onSelect={handleNavigated} />
+                <NoteTree items={items} error={error} isLoading={isLoading} onRetry={retry} onSelect={handleNavigated} onMoved={refresh} />
             </nav>
             {isSearching && (
                 <nav className="notes-sidebar-nav" aria-label="ผลการค้นหา">
