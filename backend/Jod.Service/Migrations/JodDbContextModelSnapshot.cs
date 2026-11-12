@@ -67,6 +67,15 @@ namespace Jod.Service.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("OriginalParentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("OriginalPlacement")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
@@ -84,6 +93,9 @@ namespace Jod.Service.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid?>("TrashBatchId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -93,6 +105,9 @@ namespace Jod.Service.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ParentId");
+
+                    b.HasIndex("OwnerId", "DeletedAt")
+                        .HasFilter("\"DeletedAt\" IS NOT NULL");
 
                     b.HasIndex("OwnerId", "ParentId");
 

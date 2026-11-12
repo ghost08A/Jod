@@ -46,6 +46,9 @@ public class JodDbContext(DbContextOptions<JodDbContext> options) : DbContext(op
                 .HasForeignKey(note => note.OwnerId)
                 .OnDelete(DeleteBehavior.Cascade);
             entity.Property(note => note.Placement).HasConversion<int>();
+            entity.Property(note => note.OriginalPlacement).HasConversion<int?>();
+            // The Trash of one user (only deleted rows are in this index)
+            entity.HasIndex(note => new { note.OwnerId, note.DeletedAt }).HasFilter("\"DeletedAt\" IS NOT NULL");
             // The children of one parent
             entity.HasIndex(note => new { note.OwnerId, note.ParentId });
             entity.HasOne<Note>()

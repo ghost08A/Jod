@@ -24,6 +24,14 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
     {
         var content = request.Content ?? ParseContent(NoteContentValidator.EmptyContentJson);
         NoteContentValidator.Validate(content, Limits);
+        // Note: a child is made under the per-user lock that a move and a delete hold, so the parent cannot be deleted
+        // between the check and the insert (an alive note must never have a deleted parent)
+        await using var transaction = request.ParentId is null ? null : await database.Database.BeginTransactionAsync();
+        if (transaction is not null)
+        {
+            var lockKey = userId.ToString();
+            await database.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock(hashtextextended({lockKey}, 0))");
+        }
         var (placement, position) = request.ParentId is { } parentId
             ? (NotePlacement.Child, await NextChildPositionAsync(userId, parentId))
             : (NotePlacement.Unplaced, 0);
@@ -44,12 +52,16 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
         };
         database.Notes.Add(note);
         await database.SaveChangesAsync();
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync();
+        }
         return ToViewModel(note);
     }
 
     public Task<List<NoteListItemViewModel>> ListAsync(Guid userId) =>
         database.Notes.AsNoTracking()
-            .Where(note => note.OwnerId == userId)
+            .Where(note => note.OwnerId == userId && note.DeletedAt == null)
             .OrderByDescending(note => note.UpdatedAt)
             .Select(note => new NoteListItemViewModel
             {
@@ -86,7 +98,7 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
         // Note: the version check and the write are one conditional UPDATE, so of two saves that bring the
         // same baseVersion the database lets exactly one change the row; the other one gets 0 rows back
         var changed = await database.Notes
-            .Where(note => note.Id == noteId && note.OwnerId == userId && note.Version == baseVersion)
+            .Where(note => note.Id == noteId && note.OwnerId == userId && note.DeletedAt == null && note.Version == baseVersion)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(note => note.Title, title)
                 .SetProperty(note => note.Context, noteContext)
@@ -95,8 +107,12 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
                 .SetProperty(note => note.UpdatedAt, now));
         if (changed == 0)
         {
-            // Note: a missing note and another user's note look the same, only the owner's own note can conflict
-            var current = await FindOwnedNoteAsync(userId, noteId) ?? throw NotFound();
+            // Note: a missing note, a deleted note and another user's note look the same, only the owner's own alive note can conflict
+            var current = await FindOwnedNoteAsync(userId, noteId);
+            if (current is null || current.DeletedAt is not null)
+            {
+                throw NotFound();
+            }
             throw new CustomError("โน้ตนี้ถูกแก้จากที่อื่นแล้ว", ErrorKind.Conflict) { Payload = ToViewModel(current) };
         }
 
@@ -132,9 +148,9 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
         // Depth is in the row so UNION cannot merge a cycle away, and the depth limit is what stops it
         var chain = await database.Database.SqlQuery<int>($"""
             WITH RECURSIVE chain ("Id", "ParentId", depth) AS (
-                SELECT "Id", "ParentId", 1 FROM "Notes" WHERE "Id" = {parentId} AND "OwnerId" = {userId}
+                SELECT "Id", "ParentId", 1 FROM "Notes" WHERE "Id" = {parentId} AND "OwnerId" = {userId} AND "DeletedAt" IS NULL
                 UNION
-                SELECT n."Id", n."ParentId", c.depth + 1 FROM "Notes" n JOIN chain c ON n."Id" = c."ParentId" WHERE c.depth <= {MaxAncestors}
+                SELECT n."Id", n."ParentId", c.depth + 1 FROM "Notes" n JOIN chain c ON n."Id" = c."ParentId" WHERE n."DeletedAt" IS NULL AND c.depth <= {MaxAncestors}
             )
             SELECT count(*)::int AS "Value" FROM chain
             """).SingleAsync();
@@ -147,7 +163,7 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
             throw new CustomError("โน้ตย่อยซ้อนลึกเกินไป");
         }
         var last = await database.Notes.AsNoTracking()
-            .Where(note => note.OwnerId == userId && note.ParentId == parentId)
+            .Where(note => note.OwnerId == userId && note.ParentId == parentId && note.DeletedAt == null)
             .MaxAsync(note => (int?)note.Position);
         return last is { } position ? position + 1 : 0;
     }
@@ -179,5 +195,6 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
         Placement = note.Placement,
         ParentId = note.ParentId,
         Position = note.Position,
+        DeletedAt = note.DeletedAt,
     };
 }

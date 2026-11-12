@@ -21,6 +21,10 @@ public class NotesController(INoteService noteService, INoteStructureService not
     public async Task<IActionResult> List() =>
         Ok(await noteService.ListAsync(User.GetUserId()));
 
+    [HttpGet("trash")]
+    public async Task<IActionResult> Trash() =>
+        Ok(await noteStructureService.ListTrashAsync(User.GetUserId()));
+
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id) =>
         Ok(await noteService.GetAsync(User.GetUserId(), id));
@@ -32,4 +36,8 @@ public class NotesController(INoteService noteService, INoteStructureService not
     [HttpPut("{id:guid}/placement")]
     public async Task<IActionResult> Move(Guid id, MoveNoteRequestModel request) =>
         Ok(await noteStructureService.MoveAsync(User.GetUserId(), id, request));
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, [FromQuery] string scope = "branch") =>
+        Ok(new { deletedCount = await noteStructureService.DeleteAsync(User.GetUserId(), id, scope) });
 }

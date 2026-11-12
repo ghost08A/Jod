@@ -23,4 +23,11 @@ public class Note
     public Guid? ParentId { get; set; }
     /// <summary>Order among the notes that share the same parent.</summary>
     public int Position { get; set; }
+    /// <summary>When the note was deleted (it is in the Trash); null while it is alive.</summary>
+    public DateTimeOffset? DeletedAt { get; set; }
+    /// <summary>The same value for everything one delete action took to the Trash.</summary>
+    public Guid? TrashBatchId { get; set; }
+    // Note: where the note sat just before it was deleted; a later restore reads these
+    public NotePlacement? OriginalPlacement { get; set; }
+    public Guid? OriginalParentId { get; set; }
 }

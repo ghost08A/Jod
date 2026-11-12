@@ -42,7 +42,7 @@ public class NotesApiTests : IClassFixture<JodWebFactory>
         Assert.Equal(note.GetProperty("createdAt").GetDateTimeOffset(), note.GetProperty("updatedAt").GetDateTimeOffset());
         Assert.Equal(TimeSpan.Zero, note.GetProperty("createdAt").GetDateTimeOffset().Offset);
         Assert.Equal(
-            ["id", "title", "context", "content", "version", "createdAt", "updatedAt", "placement", "parentId", "position"],
+            ["id", "title", "context", "content", "version", "createdAt", "updatedAt", "placement", "parentId", "position", "deletedAt"],
             note.EnumerateObject().Select(property => property.Name));
         Assert.EndsWith($"/api/notes/{note.GetProperty("id").GetGuid()}", response.Headers.Location?.ToString());
     }
