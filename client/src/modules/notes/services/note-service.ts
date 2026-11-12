@@ -1,5 +1,5 @@
 import { getJson, requestJson } from '../../../core/http/http-client'
-import type { DeleteScope, Note, NoteListItem, NoteSearchPage, PlacementRequest, SearchOptions, TrashNoteItem } from '../types/note'
+import type { DeleteScope, Note, NoteListItem, NoteSearchPage, PlacementRequest, ReferenceCardInfo, SearchOptions, TrashNoteItem } from '../types/note'
 import { buildSearchPath } from '../utils/search/search-request'
 
 /** Creates an empty note ("Untitled"): a child placed last under `parentId`, or an unplaced note without it */
@@ -59,4 +59,9 @@ export function deleteNotePermanently(noteId: string): Promise<{ deletedCount: n
 /** One page (50) of notes whose title or text holds `query`. `skip` is how many results the screen already holds */
 export function searchNotes(query: string, skip: number, options: SearchOptions = {}): Promise<NoteSearchPage> {
     return getJson<NoteSearchPage>(buildSearchPath(query, skip, options))
+}
+
+/** What the cards of one page show, for up to 100 target notes in one call. A note that is not yours answers like one that does not exist */
+export function getReferenceCards(noteIds: string[]): Promise<{ items: ReferenceCardInfo[] }> {
+    return requestJson<{ items: ReferenceCardInfo[] }>('/api/notes/cards', { method: 'POST', body: { noteIds } })
 }
