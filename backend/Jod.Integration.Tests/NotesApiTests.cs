@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Jod.Domain.Enums;
 using Jod.Service.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,7 +42,7 @@ public class NotesApiTests : IClassFixture<JodWebFactory>
         Assert.Equal(note.GetProperty("createdAt").GetDateTimeOffset(), note.GetProperty("updatedAt").GetDateTimeOffset());
         Assert.Equal(TimeSpan.Zero, note.GetProperty("createdAt").GetDateTimeOffset().Offset);
         Assert.Equal(
-            ["id", "title", "context", "content", "version", "createdAt", "updatedAt"],
+            ["id", "title", "context", "content", "version", "createdAt", "updatedAt", "placement", "parentId", "position"],
             note.EnumerateObject().Select(property => property.Name));
         Assert.EndsWith($"/api/notes/{note.GetProperty("id").GetGuid()}", response.Headers.Location?.ToString());
     }
@@ -136,7 +137,7 @@ public class NotesApiTests : IClassFixture<JodWebFactory>
             [first.GetProperty("id").GetGuid(), third.GetProperty("id").GetGuid(), second.GetProperty("id").GetGuid()],
             list.Select(item => item.GetProperty("id").GetGuid()));
         Assert.Equal(["first, edited", "third", "second"], list.Select(item => item.GetProperty("title").GetString()));
-        Assert.All(list, item => Assert.Equal(["id", "title", "updatedAt"], item.EnumerateObject().Select(p => p.Name)));
+        Assert.All(list, item => Assert.Equal(["id", "title", "updatedAt", "placement", "parentId", "position"], item.EnumerateObject().Select(p => p.Name)));
         Assert.DoesNotContain(list, item => item.GetProperty("id").GetGuid() == othersNote.GetProperty("id").GetGuid());
     }
 
@@ -715,6 +716,142 @@ public class NotesApiTests : IClassFixture<JodWebFactory>
         Assert.DoesNotContain(_factory.LogEntries, entry =>
             entry.Message.Contains(marker) || (entry.ExceptionText?.Contains(marker) ?? false));
         Assert.Contains(_factory.LogEntries, entry => entry.Message.Contains("Request failed"));
+    }
+
+    // ---- structure: placement, parent, position (2a-1) ----
+
+    [Fact]
+    public async Task Create_WithoutParent_IsUnplacedWithPositionZero_AndGetAndListShowIt()
+    {
+        // Arrange
+        var user = await SignInAsync();
+
+        // Act
+        var created = await CreateAsync(user);
+        var fetched = await ReadJson(await user.Client.GetAsync($"/api/notes/{created.GetProperty("id").GetGuid()}"));
+        var listed = (await ReadJson(await user.Client.GetAsync("/api/notes"))).EnumerateArray().Single();
+
+        // Assert
+        foreach (var note in new[] { created, fetched, listed })
+        {
+            Assert.Equal("unplaced", note.GetProperty("placement").GetString());
+            Assert.Equal(JsonValueKind.Null, note.GetProperty("parentId").ValueKind);
+            Assert.Equal(0, note.GetProperty("position").GetInt32());
+        }
+        Assert.Equal(["id", "title", "updatedAt", "placement", "parentId", "position"], listed.EnumerateObject().Select(p => p.Name));
+    }
+
+    [Fact]
+    public async Task Create_WithParent_IsChildAppendedLastAmongSiblings()
+    {
+        // Arrange
+        var user = await SignInAsync();
+        var parent = await CreateAsync(user);
+        var parentId = parent.GetProperty("id").GetGuid();
+
+        // Act
+        var first = await CreateChildAsync(user, parentId);
+        var second = await CreateChildAsync(user, parentId);
+
+        // Assert
+        Assert.Equal("child", first.GetProperty("placement").GetString());
+        Assert.Equal(parentId, first.GetProperty("parentId").GetGuid());
+        Assert.Equal(0, first.GetProperty("position").GetInt32());
+        Assert.Equal(1, second.GetProperty("position").GetInt32());
+        var listed = (await ReadJson(await user.Client.GetAsync("/api/notes"))).EnumerateArray().ToList();
+        var listedSecond = listed.Single(item => item.GetProperty("id").GetGuid() == second.GetProperty("id").GetGuid());
+        Assert.Equal("child", listedSecond.GetProperty("placement").GetString());
+        Assert.Equal(parentId, listedSecond.GetProperty("parentId").GetGuid());
+        Assert.Equal(1, listedSecond.GetProperty("position").GetInt32());
+    }
+
+    [Fact]
+    public async Task Create_WithAParentThatIsAnotherUsersNoteOrMissing_Returns404TheSameWay()
+    {
+        // Arrange
+        var owner = await SignInAsync();
+        var other = await SignInAsync();
+        var foreignParent = (await CreateAsync(owner)).GetProperty("id").GetGuid();
+
+        // Act
+        var foreign = await other.Client.PostAsync("/api/notes", Json($"{{\"parentId\":\"{foreignParent}\"}}"));
+        var missing = await other.Client.PostAsync("/api/notes", Json($"{{\"parentId\":\"{Guid.NewGuid()}\"}}"));
+
+        // Assert
+        await AssertSameNotFoundAsync(foreign, missing);
+        Assert.Empty((await ReadJson(await other.Client.GetAsync("/api/notes"))).EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Create_ChildDeeperThan200Ancestors_IsRejected_AndExactly200IsAccepted()
+    {
+        // Arrange: a chain c0..c200 where ci has i ancestors, built in the database
+        var user = await SignInAsync();
+        var ids = new List<Guid>();
+        await using (var scope = new ScopedDatabase(_factory))
+        {
+            for (var i = 0; i <= 200; i++)
+            {
+                var id = Guid.NewGuid();
+                scope.Context.Notes.Add(new Note
+                {
+                    Id = id,
+                    OwnerId = user.UserId,
+                    Title = $"c{i}",
+                    Context = "",
+                    Content = EmptyContent,
+                    Version = 1,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow,
+                    Placement = i == 0 ? NotePlacement.Root : NotePlacement.Child,
+                    ParentId = i == 0 ? null : ids[i - 1],
+                });
+                ids.Add(id);
+                await scope.Context.SaveChangesAsync();
+            }
+        }
+
+        // Act
+        var accepted = await user.Client.PostAsync("/api/notes", Json($"{{\"parentId\":\"{ids[199]}\"}}"));
+        var rejected = await user.Client.PostAsync("/api/notes", Json($"{{\"parentId\":\"{ids[200]}\"}}"));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
+        var problem = await ReadProblemAsync(rejected, HttpStatusCode.BadRequest);
+        Assert.Single(ReadErrors(problem));
+    }
+
+    [Fact]
+    public async Task Save_DoesNotChangePlacementParentOrPosition_AndStillConflictsOnAStaleVersion()
+    {
+        // Arrange
+        var user = await SignInAsync();
+        var parent = await CreateAsync(user);
+        var parentId = parent.GetProperty("id").GetGuid();
+        await CreateChildAsync(user, parentId);
+        var child = await CreateChildAsync(user, parentId);
+
+        // Act
+        var saved = await SaveAsync(user, child, title: "renamed");
+        var stale = await user.Client.PutAsync(
+            $"/api/notes/{child.GetProperty("id").GetGuid()}", Json(Body("late", "", EmptyContent, 1)));
+
+        // Assert
+        Assert.Equal("child", saved.GetProperty("placement").GetString());
+        Assert.Equal(parentId, saved.GetProperty("parentId").GetGuid());
+        Assert.Equal(1, saved.GetProperty("position").GetInt32());
+        var problem = await ReadProblemAsync(stale, HttpStatusCode.Conflict);
+        Assert.Equal("child", problem.GetProperty("payload").GetProperty("placement").GetString());
+        var fetched = await ReadJson(await user.Client.GetAsync($"/api/notes/{child.GetProperty("id").GetGuid()}"));
+        Assert.Equal(parentId, fetched.GetProperty("parentId").GetGuid());
+        Assert.Equal(1, fetched.GetProperty("position").GetInt32());
+    }
+
+    private static async Task<JsonElement> CreateChildAsync(TestUser user, Guid parentId)
+    {
+        var response = await user.Client.PostAsync("/api/notes", Json($"{{\"parentId\":\"{parentId}\"}}"));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        return await ReadJson(response);
     }
 
     // ---- helpers ----

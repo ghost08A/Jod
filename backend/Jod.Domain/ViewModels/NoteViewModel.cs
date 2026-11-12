@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Jod.Domain.Enums;
 
 namespace Jod.Domain.ViewModels;
 
@@ -17,4 +18,10 @@ public class NoteViewModel
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }
+
+    public NotePlacement Placement { get; set; }
+
+    public Guid? ParentId { get; set; }
+
+    public int Position { get; set; }
 }

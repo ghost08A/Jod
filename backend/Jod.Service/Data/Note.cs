@@ -1,3 +1,5 @@
+using Jod.Domain.Enums;
+
 namespace Jod.Service.Data;
 
 /// <summary>
@@ -16,4 +18,9 @@ public class Note
     public int Version { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+    // Note: the structure columns are not part of Version; a content save never writes them
+    public NotePlacement Placement { get; set; }
+    public Guid? ParentId { get; set; }
+    /// <summary>Order among the notes that share the same parent.</summary>
+    public int Position { get; set; }
 }

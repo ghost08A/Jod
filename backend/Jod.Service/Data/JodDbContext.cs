@@ -45,6 +45,13 @@ public class JodDbContext(DbContextOptions<JodDbContext> options) : DbContext(op
                 .WithMany()
                 .HasForeignKey(note => note.OwnerId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.Property(note => note.Placement).HasConversion<int>();
+            // The children of one parent
+            entity.HasIndex(note => new { note.OwnerId, note.ParentId });
+            entity.HasOne<Note>()
+                .WithMany()
+                .HasForeignKey(note => note.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

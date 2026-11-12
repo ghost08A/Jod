@@ -3,8 +3,10 @@ import { Link, useOutletContext, useParams } from 'react-router'
 import { ErrorMessage } from '../../../shared/components/ErrorMessage'
 import { useAutosave } from '../hooks/useAutosave'
 import { useNote } from '../hooks/useNote'
-import type { Note } from '../types/note'
+import type { Note, NoteListItem } from '../types/note'
 import { AutosaveStatusIndicator } from './AutosaveStatusIndicator'
+import { Breadcrumb } from './Breadcrumb'
+import { NewNoteButton } from './NewNoteButton'
 import { NoteContextField } from './NoteContextField'
 import { NoteTitleField } from './NoteTitleField'
 
@@ -87,7 +89,7 @@ export function NotePage() {
 }
 
 function LoadedNotePage({ note }: { note: Note }) {
-    const { refreshNoteList } = useOutletContext<{ refreshNoteList: () => void }>()
+    const { refreshNoteList, noteListItems } = useOutletContext<{ refreshNoteList: () => void; noteListItems: NoteListItem[] | undefined }>()
     const { view, copyResult, editTitle, editContext, editContent, retry, copyContent, conflict } = useAutosave(note, refreshNoteList)
     const { loadedNote, loadedRevision, conflictMyNote, conflictServerNote } = view
     const isConflict = conflictMyNote !== undefined && conflictServerNote !== undefined
@@ -115,6 +117,8 @@ function LoadedNotePage({ note }: { note: Note }) {
             )}
             {/* Note: kept mounted but hidden during a conflict, so the fields keep their text and cannot be typed in */}
             <div className="notes-page-fields" hidden={isConflict}>
+                <Breadcrumb items={noteListItems} noteId={note.id} />
+                <NewNoteButton parentId={note.id} onCreated={refreshNoteList} />
                 <NoteTitleField key={`title-${loadedRevision}`} initialTitle={loadedNote.title} onTitleChange={editTitle} />
                 <NoteContextField key={`context-${loadedRevision}`} initialContext={loadedNote.context} onContextChange={editContext} />
                 <Suspense fallback={<NoteEditorSkeleton />}>

@@ -1,9 +1,10 @@
 import { getJson, requestJson } from '../../../core/http/http-client'
 import type { Note, NoteListItem } from '../types/note'
 
-/** Creates an empty note ("Untitled") for the signed-in user */
-export function createNote(): Promise<Note> {
-    return requestJson<Note>('/api/notes', { method: 'POST' })
+/** Creates an empty note ("Untitled"): a child placed last under `parentId`, or an unplaced note without it */
+export function createNote(options: { parentId?: string } = {}): Promise<Note> {
+    const body = options.parentId === undefined ? undefined : { parentId: options.parentId }
+    return requestJson<Note>('/api/notes', { method: 'POST', body })
 }
 
 /** The server already sorts the list, newest change first */

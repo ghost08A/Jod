@@ -73,6 +73,90 @@
     height: 2.5rem;
 }
 
+.notes-tree-section + .notes-tree-section {
+    margin-top: var(--space-4);
+}
+
+.notes-tree-heading {
+    margin: 0 0 var(--space-2);
+    padding: 0 var(--space-3);
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.notes-tree-row {
+    display: flex;
+    align-items: center;
+    padding-left: calc(var(--tree-depth, 0) * var(--space-4));
+}
+
+.notes-tree-toggle,
+.notes-tree-toggle-spacer {
+    flex: none;
+    width: 44px;
+    height: 44px;
+}
+
+.notes-tree-toggle {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    color: var(--color-text-muted);
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius);
+    cursor: pointer;
+}
+
+.notes-tree-toggle:hover {
+    color: var(--color-text);
+    background: var(--color-row-hover-bg);
+}
+
+.notes-tree-toggle:active {
+    background: var(--color-row-active-bg);
+}
+
+.notes-tree-toggle:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+}
+
+.notes-tree-toggle svg[data-expanded='true'] {
+    transform: rotate(90deg);
+}
+
+.notes-tree-row .notes-list-link {
+    flex: 1;
+    min-width: 0;
+}
+
+.notes-breadcrumb ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+    margin: 0;
+    padding: 0;
+    color: var(--color-text-muted);
+    list-style: none;
+}
+
+.notes-breadcrumb li + li::before {
+    margin-right: var(--space-2);
+    content: '/';
+}
+
+.notes-breadcrumb a {
+    display: inline-block;
+    max-width: 16rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
 .notes-list-link {
     display: block;
     min-height: 44px;
