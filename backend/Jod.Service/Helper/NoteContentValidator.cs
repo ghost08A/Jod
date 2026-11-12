@@ -26,6 +26,7 @@ public static class NoteContentValidator
     private static readonly string[] ChecklistProperties = ["id", "type", "text", "checked", "children"];
     private static readonly string[] CodeProperties = ["id", "type", "text", "language"];
     private static readonly string[] DividerProperties = ["id", "type"];
+    private static readonly string[] ReferenceProperties = ["id", "type", "noteId"];
 
     /// <summary>Trims the title; an empty one becomes "Untitled". The web client has the same rule.</summary>
     public static string NormalizeTitle(string? title, NoteOptions options)
@@ -140,6 +141,7 @@ public static class NoteContentValidator
             "checklist" => ChecklistProperties,
             "code" => CodeProperties,
             "divider" => DividerProperties,
+            "reference" => ReferenceProperties,
             _ => null,
         };
         if (allowed is null || properties.Keys.Any(name => !allowed.Contains(name)))
@@ -152,7 +154,12 @@ public static class NoteContentValidator
         {
             throw new CustomError(InvalidContentMessage);
         }
-        if (type != "divider" && (!properties.TryGetValue("text", out var text) || ReadText(text) is null))
+        if (type == "reference"
+            && !(properties.TryGetValue("noteId", out var noteId) && Guid.TryParseExact(ReadText(noteId), "D", out _)))
+        {
+            throw new CustomError(InvalidContentMessage);
+        }
+        if (type is not ("divider" or "reference") && (!properties.TryGetValue("text", out var text) || ReadText(text) is null))
         {
             throw new CustomError(InvalidContentMessage);
         }
@@ -175,6 +182,31 @@ public static class NoteContentValidator
             return children.ValueKind == JsonValueKind.Array ? children : throw new CustomError(InvalidContentMessage);
         }
         return null;
+    }
+
+    /// <summary>
+    /// The distinct target ids of every reference block at any depth. The document must already be validated.
+    /// </summary>
+    public static HashSet<Guid> ReferencedNoteIds(JsonElement content)
+    {
+        var targets = new HashSet<Guid>();
+        var pending = new Stack<JsonElement>();
+        pending.Push(content.GetProperty("blocks"));
+        while (pending.Count > 0)
+        {
+            foreach (var block in pending.Pop().EnumerateArray())
+            {
+                if (block.TryGetProperty("noteId", out var noteId) && Guid.TryParseExact(noteId.GetString(), "D", out var target))
+                {
+                    targets.Add(target);
+                }
+                if (block.TryGetProperty("children", out var children))
+                {
+                    pending.Push(children);
+                }
+            }
+        }
+        return targets;
     }
 
     /// <summary>The string value, or null when it is not a string or holds a character the database cannot store.</summary>

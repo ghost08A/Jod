@@ -47,6 +47,36 @@ public class NoteContentValidatorTests
         Assert.Null(exception);
     }
 
+    [Fact]
+    public void Validate_ReferenceBlock_IsAcceptedAndItsTargetsAreCollectedFromAnyDepth()
+    {
+        // Arrange
+        var target = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var content = Document(
+            Block("reference", 1, $"\"noteId\":\"{target}\""),
+            Block("toggle", 2, "\"text\":\"a\",\"children\":[" + Block("reference", 3, $"\"noteId\":\"{other}\"") + "," + Block("reference", 4, $"\"noteId\":\"{target}\"") + "]"));
+
+        // Act
+        var exception = Record.Exception(() => NoteContentValidator.Validate(content, Defaults));
+
+        // Assert
+        Assert.Null(exception);
+        Assert.Equal(new HashSet<Guid> { target, other }, NoteContentValidator.ReferencedNoteIds(content));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("\"noteId\":\"not-a-guid\"")]
+    [InlineData("\"noteId\":5")]
+    [InlineData("\"noteId\":null")]
+    [InlineData("\"noteId\":\"00000000-0000-0000-0000-000000000001\",\"children\":[]")]
+    [InlineData("\"noteId\":\"00000000-0000-0000-0000-000000000001\",\"text\":\"x\"")]
+    public void Validate_BadReferenceBlock_IsRejected(string properties)
+    {
+        AssertRejected(Document(Block("reference", 1, properties)));
+    }
+
     // ---- block document: rejected ----
 
     [Theory]

@@ -52,6 +52,7 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
             Position = position,
         };
         database.Notes.Add(note);
+        database.NoteCardReferences.AddRange(CardRows(note.Id, content));
         await database.SaveChangesAsync();
         if (transaction is not null)
         {
@@ -99,6 +100,8 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
 
         // Note: the version check and the write are one conditional UPDATE, so of two saves that bring the
         // same baseVersion the database lets exactly one change the row; the other one gets 0 rows back
+        // Note: the card rows are replaced in the same transaction as the content, so they always match the saved document
+        await using var transaction = await database.Database.BeginTransactionAsync();
         var changed = await database.Notes
             .Where(note => note.Id == noteId && note.OwnerId == userId && note.DeletedAt == null && note.Version == baseVersion)
             .ExecuteUpdateAsync(setters => setters
@@ -118,6 +121,11 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
             }
             throw new CustomError("โน้ตนี้ถูกแก้จากที่อื่นแล้ว", ErrorKind.Conflict) { Payload = ToViewModel(current) };
         }
+
+        await database.NoteCardReferences.Where(reference => reference.SourceNoteId == noteId).ExecuteDeleteAsync();
+        database.NoteCardReferences.AddRange(CardRows(noteId, content));
+        await database.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         // Note: built from what was just written (not read back) so a save that follows ours cannot change this answer.
         // CreatedAt never changes after the note is made, and a save does not write placement, parent or position, so those are read here too
@@ -141,6 +149,37 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
     }
 
     private const int MaxAncestors = 200;
+    private const int MaxCardIds = 100;
+
+    public async Task<List<NoteCardViewModel>> GetCardsAsync(Guid userId, NoteCardsRequestModel request)
+    {
+        if (request.NoteIds is not { Count: > 0 and <= MaxCardIds } requested)
+        {
+            throw new CustomError($"ต้องส่งรหัสโน้ต 1 ถึง {MaxCardIds} รหัส");
+        }
+        var ids = requested.Distinct().ToList();
+        var found = await database.Notes.AsNoTracking()
+            .Where(note => note.OwnerId == userId && ids.Contains(note.Id))
+            .Select(note => new { note.Id, note.Title, note.Placement, note.DeletedAt, ParentId = note.DeletedAt == null ? note.ParentId : note.OriginalParentId })
+            .ToDictionaryAsync(note => note.Id);
+        var parentIds = found.Values.Select(note => note.ParentId).OfType<Guid>().Distinct().ToList();
+        var parentTitles = await database.Notes.AsNoTracking()
+            .Where(note => note.OwnerId == userId && parentIds.Contains(note.Id))
+            .ToDictionaryAsync(note => note.Id, note => note.Title);
+        return ids.Select(id => found.TryGetValue(id, out var note)
+            ? new NoteCardViewModel
+            {
+                NoteId = id,
+                Status = note.DeletedAt is null ? "alive" : "trashed",
+                Title = note.Title,
+                ParentTitle = note.ParentId is { } parentId && parentTitles.TryGetValue(parentId, out var title) ? title : null,
+                Placement = note.Placement,
+            }
+            : new NoteCardViewModel { NoteId = id, Status = "missing" }).ToList();
+    }
+
+    private static IEnumerable<NoteCardReference> CardRows(Guid sourceId, JsonElement content) =>
+        NoteContentValidator.ReferencedNoteIds(content).Select(target => new NoteCardReference { SourceNoteId = sourceId, TargetNoteId = target });
 
     // Note: the parent must be the caller's own note (a foreign or missing one is a 404) and the new child may have
     // at most MaxAncestors ancestors. The walk is a loop that stops at the cap, so a cycle in corrupt data cannot run forever.
