@@ -59,6 +59,9 @@ export function NoteSidebar({ isDrawer, isOpen, openerRef, onClose, noteList }: 
             <nav className="notes-sidebar-nav" aria-label="โน้ตของฉัน">
                 <NoteTree items={items} error={error} isLoading={isLoading} onRetry={retry} onSelect={handleNavigated} />
             </nav>
+            <Link className="notes-trash-link" to="/trash" onClick={handleNavigated}>
+                Trash
+            </Link>
             <SidebarFooter />
         </aside>
     )

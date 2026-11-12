@@ -27,4 +27,11 @@ describe('describeSaveFailure', () => {
             canRetryHelp: false,
         })
     })
+
+    it('tells a 404 may be a deleted note and offers the copy button, not retry', () => {
+        expect(describeSaveFailure({ kind: 'http', status: 404, message: 'x' })).toEqual({
+            message: 'ไม่พบโน้ตนี้ อาจถูกลบไปแล้ว ดูใน Trash',
+            canRetryHelp: false,
+        })
+    })
 })

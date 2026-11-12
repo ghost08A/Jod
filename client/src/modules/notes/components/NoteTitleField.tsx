@@ -6,10 +6,11 @@ const NOTE_TITLE_MAX_LENGTH = 200
 type NoteTitleFieldProps = {
     initialTitle: string
     /** Called with the whole title after every change */
-    onTitleChange: (title: string) => void
+    onTitleChange?: (title: string) => void
+    isReadOnly?: boolean
 }
 
-export function NoteTitleField({ initialTitle, onTitleChange }: NoteTitleFieldProps) {
+export function NoteTitleField({ initialTitle, onTitleChange, isReadOnly }: NoteTitleFieldProps) {
     const [title, setTitle] = useState(initialTitle)
 
     return (
@@ -19,8 +20,9 @@ export function NoteTitleField({ initialTitle, onTitleChange }: NoteTitleFieldPr
             value={title}
             onChange={(event) => {
                 setTitle(event.target.value)
-                onTitleChange(event.target.value)
+                onTitleChange?.(event.target.value)
             }}
+            readOnly={isReadOnly}
             maxLength={NOTE_TITLE_MAX_LENGTH}
             placeholder="Untitled"
             aria-label="ชื่อโน้ต"

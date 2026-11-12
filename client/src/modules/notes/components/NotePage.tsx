@@ -1,15 +1,17 @@
 import { lazy, Suspense, useState } from 'react'
-import { Link, useOutletContext, useParams } from 'react-router'
+import { Link, useNavigate, useOutletContext, useParams } from 'react-router'
 import { ErrorMessage } from '../../../shared/components/ErrorMessage'
 import { useAutosave } from '../hooks/useAutosave'
 import { useNote } from '../hooks/useNote'
 import type { Note, NoteListItem } from '../types/note'
 import { AutosaveStatusIndicator } from './AutosaveStatusIndicator'
 import { Breadcrumb } from './Breadcrumb'
+import { DeleteNoteDialog } from './DeleteNoteDialog'
 import { MoveNoteDialog } from './MoveNoteDialog'
 import { NewNoteButton } from './NewNoteButton'
 import { NoteContextField } from './NoteContextField'
 import { NoteTitleField } from './NoteTitleField'
+import { formatDateTimeMinutes } from '../utils/shell/format-date-time'
 
 // Note: TipTap is large, so the editor is a separate chunk loaded only when a note opens (the sign-in page never loads it).
 // If the chunk cannot be downloaded (offline), the error below is shown instead of a blank page
@@ -86,7 +88,24 @@ export function NotePage() {
     }
 
     // Note: keyed by id, so another note starts with fresh fields, editor and autosave
-    return <LoadedNotePage key={note.id} note={note} />
+    // Note: a deleted note never creates the autosave controller, so nothing can be sent for it
+    return note.deletedAt === null ? <LoadedNotePage key={note.id} note={note} /> : <DeletedNotePage key={note.id} note={note} deletedAt={note.deletedAt} />
+}
+
+function DeletedNotePage({ note, deletedAt }: { note: Note; deletedAt: string }) {
+    return (
+        <article className="notes-page">
+            <div className="notes-trash-banner" role="status">
+                <span>โน้ตนี้อยู่ใน Trash (ลบเมื่อ {formatDateTimeMinutes(deletedAt)}) ดูได้อย่างเดียว</span>
+                <Link to="/trash">กลับไป Trash</Link>
+            </div>
+            <NoteTitleField initialTitle={note.title} isReadOnly />
+            <NoteContextField initialContext={note.context} isReadOnly />
+            <Suspense fallback={<NoteEditorSkeleton />}>
+                <NoteEditor content={note.content} isReadOnly />
+            </Suspense>
+        </article>
+    )
 }
 
 function LoadedNotePage({ note }: { note: Note }) {
@@ -94,6 +113,8 @@ function LoadedNotePage({ note }: { note: Note }) {
     const { view, copyResult, editTitle, editContext, editContent, retry, copyContent, conflict } = useAutosave(note, refreshNoteList)
     const { loadedNote, loadedRevision, conflictMyNote, conflictServerNote } = view
     const [isMoveOpen, setIsMoveOpen] = useState(false)
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+    const navigate = useNavigate()
     const isConflict = conflictMyNote !== undefined && conflictServerNote !== undefined
 
     // Note: the fields and the editor read their text once. When a newer note came from the server (only while
@@ -124,6 +145,9 @@ function LoadedNotePage({ note }: { note: Note }) {
                     <button className="notes-secondary-button notes-page-move-button" type="button" onClick={() => setIsMoveOpen(true)} disabled={!noteListItems}>
                         จัดวาง
                     </button>
+                    <button className="notes-secondary-button" type="button" onClick={() => setIsDeleteOpen(true)} disabled={!noteListItems}>
+                        ลบ
+                    </button>
                 </div>
                 <NewNoteButton parentId={note.id} onCreated={refreshNoteList} />
                 <NoteTitleField key={`title-${loadedRevision}`} initialTitle={loadedNote.title} onTitleChange={editTitle} />
@@ -134,6 +158,17 @@ function LoadedNotePage({ note }: { note: Note }) {
             </div>
             {isMoveOpen && noteListItems && (
                 <MoveNoteDialog noteId={note.id} items={noteListItems} onClose={() => setIsMoveOpen(false)} onMoved={refreshNoteList} />
+            )}
+            {isDeleteOpen && noteListItems && (
+                <DeleteNoteDialog
+                    noteId={note.id}
+                    items={noteListItems}
+                    onClose={() => setIsDeleteOpen(false)}
+                    onDeleted={() => {
+                        refreshNoteList()
+                        void navigate('/')
+                    }}
+                />
             )}
         </article>
     )

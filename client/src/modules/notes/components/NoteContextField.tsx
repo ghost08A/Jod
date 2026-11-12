@@ -6,10 +6,11 @@ const NOTE_CONTEXT_MAX_LENGTH = 2000
 type NoteContextFieldProps = {
     initialContext: string
     /** Called with the whole context after every change */
-    onContextChange: (context: string) => void
+    onContextChange?: (context: string) => void
+    isReadOnly?: boolean
 }
 
-export function NoteContextField({ initialContext, onContextChange }: NoteContextFieldProps) {
+export function NoteContextField({ initialContext, onContextChange, isReadOnly }: NoteContextFieldProps) {
     const [context, setContext] = useState(initialContext)
     const fieldRef = useRef<HTMLTextAreaElement>(null)
 
@@ -29,8 +30,9 @@ export function NoteContextField({ initialContext, onContextChange }: NoteContex
             value={context}
             onChange={(event) => {
                 setContext(event.target.value)
-                onContextChange(event.target.value)
+                onContextChange?.(event.target.value)
             }}
+            readOnly={isReadOnly}
             maxLength={NOTE_CONTEXT_MAX_LENGTH}
             placeholder="บริบทของโน้ตนี้…"
             aria-label="บริบทของโน้ต"

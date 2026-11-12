@@ -57,3 +57,8 @@ export function siblingMoveRequest(items: NoteListItem[], noteId: string, direct
         ? { placement: 'child', parentId: note.parentId, beforeId }
         : { placement: 'root', beforeId }
 }
+
+/** How many notes a "delete the whole branch" takes from the loaded list: the note and everything below it. 0 when the note is not in the list */
+export function branchDeleteCount(items: NoteListItem[], noteId: string): number {
+    return items.some((item) => item.id === noteId) ? 1 + noteDescendantIds(items, noteId).size : 0
+}

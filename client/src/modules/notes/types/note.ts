@@ -14,6 +14,8 @@ export type Note = {
     parentId: string | null
     /** Order among siblings */
     position: number
+    /** When the note went to Trash; null for a note that is not deleted */
+    deletedAt: string | null
 }
 
 export type NoteListItem = {
@@ -36,4 +38,24 @@ export type PlacementRequest = {
     placement: NotePlacement
     parentId?: string
     beforeId?: string
+}
+
+/** What a delete takes: the note with its whole branch, or only the note (its children move up) */
+export type DeleteScope = 'branch' | 'single'
+
+/** One deleted note. placement, parentId and position are the values at the moment of deletion */
+export type TrashNoteItem = {
+    id: string
+    title: string
+    deletedAt: string
+    trashBatchId: string
+    placement: NotePlacement
+    parentId: string | null
+    position: number
+}
+
+/** One deleted note of the Trash tree with the deleted notes that hang under it */
+export type TrashBranch = {
+    item: TrashNoteItem
+    children: TrashBranch[]
 }

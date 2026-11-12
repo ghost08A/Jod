@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NoteListItem, NotePlacement } from '../../types/note'
 import { buildNoteTree } from './build-note-tree'
-import { canMoveInto, CANNOT_MOVE_INTO_SELF_REASON, compareSiblings, noteDescendantIds, siblingMoveRequest, siblingsOf } from './note-placement'
+import { branchDeleteCount, canMoveInto, CANNOT_MOVE_INTO_SELF_REASON, compareSiblings, noteDescendantIds, siblingMoveRequest, siblingsOf } from './note-placement'
 
 function note(id: string, placement: NotePlacement, parentId: string | null = null, position = 0): NoteListItem {
     return { id, title: id, updatedAt: '2026-01-01T00:00:00Z', placement, parentId, position }
@@ -70,5 +70,16 @@ describe('siblingMoveRequest', () => {
     it('is undefined for an unplaced or unknown note', () => {
         expect(siblingMoveRequest([note('u', 'unplaced')], 'u', 'up')).toBeUndefined()
         expect(siblingMoveRequest(family, 'nope', 'down')).toBeUndefined()
+    })
+})
+
+describe('branchDeleteCount', () => {
+    it('counts the note and every note below it', () => {
+        expect(branchDeleteCount(family, 'r')).toBe(5)
+        expect(branchDeleteCount(family, 'a')).toBe(2)
+    })
+    it('is 1 for a note without children and 0 for an unknown note', () => {
+        expect(branchDeleteCount(family, 'g')).toBe(1)
+        expect(branchDeleteCount(family, 'nope')).toBe(0)
     })
 })
