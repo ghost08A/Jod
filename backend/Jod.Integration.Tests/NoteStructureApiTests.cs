@@ -280,6 +280,25 @@ public class NoteStructureApiTests : IClassFixture<JodWebFactory>
         Assert.Equal(parent, (await ListItemAsync(user, note)).GetProperty("parentId").GetGuid());
     }
 
+    [Fact]
+    public async Task Move_TwoOppositeMovesAtTheSameMoment_NeverLeaveALoop()
+    {
+        // Arrange
+        var user = await SignInAsync();
+
+        // Act + Assert: many rounds with fresh notes, A under B and B under A fired together
+        for (var round = 0; round < 20; round++)
+        {
+            var (a, b) = (await CreateAsync(user), await CreateAsync(user));
+            var results = await Task.WhenAll(MoveAsync(user, a, "child", b), MoveAsync(user, b, "child", a));
+
+            var parents = (await ListAsync(user)).ToDictionary(n => n.GetProperty("id").GetGuid(), n => n.GetProperty("parentId"));
+            Assert.False(parents[a].ValueKind != JsonValueKind.Null && parents[b].ValueKind != JsonValueKind.Null, $"loop in round {round}");
+            Assert.Single(results, r => r.StatusCode == HttpStatusCode.OK);
+            Assert.Single(results, r => r.StatusCode == HttpStatusCode.BadRequest);
+        }
+    }
+
     // ---- helpers ----
 
     private record TestUser(HttpClient Client, Guid UserId);

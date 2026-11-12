@@ -20,6 +20,12 @@ public class NoteStructureService(JodDbContext database) : INoteStructureService
         {
             throw new CustomError("ข้อมูลที่ส่งมาไม่ถูกต้อง");
         }
+        // Note: one transaction holds every check and the write, and a per-user advisory lock (released at commit or
+        // rollback) lines up the moves of one user, so two moves at the same moment cannot both pass the loop check.
+        // An error thrown below leaves the using block, which rolls the transaction back
+        await using var transaction = await database.Database.BeginTransactionAsync();
+        var lockKey = userId.ToString();
+        await database.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock(hashtextextended({lockKey}, 0))");
         if (!await database.Notes.AnyAsync(note => note.Id == noteId && note.OwnerId == userId))
         {
             throw NotFound();
@@ -43,7 +49,7 @@ public class NoteStructureService(JodDbContext database) : INoteStructureService
             await PlaceAmongSiblingsAsync(userId, noteId, placement, request.ParentId, request.BeforeId);
         }
 
-        return await database.Notes.AsNoTracking()
+        var moved = await database.Notes.AsNoTracking()
             .Where(note => note.Id == noteId && note.OwnerId == userId)
             .Select(note => new NoteListItemViewModel
             {
@@ -55,6 +61,8 @@ public class NoteStructureService(JodDbContext database) : INoteStructureService
                 Position = note.Position,
             })
             .SingleAsync();
+        await transaction.CommitAsync();
+        return moved;
     }
 
     // Note: one recursive query walks up from the new parent. Each row is the depth of one note on the way up,
@@ -95,13 +103,13 @@ public class NoteStructureService(JodDbContext database) : INoteStructureService
     }
 
     // Note: the new group is renumbered 0..n-1 in one UPDATE (one transaction). The old group keeps its gaps.
-    // Sibling order is position, then creation time, then id. Two moves at the same moment can leave equal positions,
+    // Sibling order is position, then id (the client sorts the same way). Two moves at the same moment can leave equal positions,
     // which that order still resolves the same way every time
     private async Task PlaceAmongSiblingsAsync(Guid userId, Guid noteId, NotePlacement placement, Guid? parentId, Guid? beforeId)
     {
         var order = await database.Notes.AsNoTracking()
             .Where(note => note.OwnerId == userId && note.Placement == placement && note.ParentId == parentId && note.Id != noteId)
-            .OrderBy(note => note.Position).ThenBy(note => note.CreatedAt).ThenBy(note => note.Id)
+            .OrderBy(note => note.Position).ThenBy(note => note.Id)
             .Select(note => note.Id)
             .ToListAsync();
         var index = order.Count;
