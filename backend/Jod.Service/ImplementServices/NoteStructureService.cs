@@ -251,6 +251,101 @@ public class NoteStructureService(JodDbContext database, TimeProvider timeProvid
             """);
     }
 
+    public async Task<NoteListItemViewModel> RestoreAsync(Guid userId, Guid noteId)
+    {
+        await using var transaction = await BeginLockedAsync(userId);
+        var target = await database.Notes.AsNoTracking()
+            .Where(note => note.Id == noteId && note.OwnerId == userId && note.DeletedAt != null)
+            .Select(note => new { note.TrashBatchId, note.OriginalPlacement, note.OriginalParentId })
+            .SingleOrDefaultAsync() ?? throw NotFound();
+        var branch = await TrashBranchAsync(userId, noteId, target.TrashBatchId!.Value);
+
+        // Note: the note goes back to its original place only if that place still exists alive. A note whose parent is gone
+        // or still in the Trash (so it is not the head of its delete) comes back Unplaced, and its descendants of the same
+        // delete come with it under it. Unplaced stays Unplaced
+        var placement = NotePlacement.Unplaced;
+        Guid? parentId = null;
+        if (target.OriginalPlacement == NotePlacement.Root)
+        {
+            placement = NotePlacement.Root;
+        }
+        else if (target.OriginalPlacement == NotePlacement.Child && target.OriginalParentId is { } original
+            && await database.Notes.AnyAsync(note => note.Id == original && note.OwnerId == userId && note.DeletedAt == null))
+        {
+            placement = NotePlacement.Child;
+            parentId = original;
+        }
+        var position = 0;
+        if (placement != NotePlacement.Unplaced)
+        {
+            position = (await database.Notes
+                .Where(note => note.OwnerId == userId && note.DeletedAt == null && note.Placement == placement && note.ParentId == parentId)
+                .Select(note => (int?)note.Position).MaxAsync() ?? -1) + 1;
+        }
+
+        await database.Notes
+            .Where(note => note.OwnerId == userId && branch.Contains(note.Id))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(note => note.DeletedAt, (DateTimeOffset?)null)
+                .SetProperty(note => note.TrashBatchId, (Guid?)null)
+                .SetProperty(note => note.OriginalPlacement, (NotePlacement?)null)
+                .SetProperty(note => note.OriginalParentId, (Guid?)null));
+        await database.Notes
+            .Where(note => note.Id == noteId && note.OwnerId == userId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(note => note.Placement, placement)
+                .SetProperty(note => note.ParentId, parentId)
+                .SetProperty(note => note.Position, position));
+
+        var restored = await database.Notes.AsNoTracking()
+            .Where(note => note.Id == noteId && note.OwnerId == userId)
+            .Select(note => new NoteListItemViewModel
+            {
+                Id = note.Id,
+                Title = note.Title,
+                UpdatedAt = note.UpdatedAt,
+                Placement = note.Placement,
+                ParentId = note.ParentId,
+                Position = note.Position,
+            })
+            .SingleAsync();
+        await transaction.CommitAsync();
+        return restored;
+    }
+
+    public async Task<int> DeletePermanentlyAsync(Guid userId, Guid noteId)
+    {
+        await using var transaction = await BeginLockedAsync(userId);
+        var batchId = await database.Notes.AsNoTracking()
+            .Where(note => note.Id == noteId && note.OwnerId == userId && note.DeletedAt != null)
+            .Select(note => note.TrashBatchId)
+            .SingleOrDefaultAsync() ?? throw NotFound();
+        var branch = await TrashBranchAsync(userId, noteId, batchId);
+        // Note: a note left in the Trash from another delete may still point at one of these (the foreign key is Restrict),
+        // and the rows go in one statement, so every pointer at them is cleared first. Restore reads OriginalParentId, not ParentId
+        await database.Notes
+            .Where(note => note.OwnerId == userId && note.ParentId != null && branch.Contains(note.ParentId.Value))
+            .ExecuteUpdateAsync(setters => setters.SetProperty(note => note.ParentId, (Guid?)null));
+        var removed = await database.Notes
+            .Where(note => note.OwnerId == userId && branch.Contains(note.Id))
+            .ExecuteDeleteAsync();
+        await transaction.CommitAsync();
+        return removed;
+    }
+
+    // Note: the note and the descendants that went to the Trash in the same delete. Depth is in the row so UNION cannot
+    // merge a cycle away, and the depth limit is what stops it
+    private Task<List<Guid>> TrashBranchAsync(Guid userId, Guid noteId, Guid batchId) =>
+        database.Database.SqlQuery<Guid>($"""
+            WITH RECURSIVE branch ("Id", depth) AS (
+                SELECT "Id", 0 FROM "Notes" WHERE "Id" = {noteId} AND "OwnerId" = {userId} AND "DeletedAt" IS NOT NULL
+                UNION
+                SELECT n."Id", b.depth + 1 FROM "Notes" n JOIN branch b ON n."ParentId" = b."Id"
+                WHERE n."DeletedAt" IS NOT NULL AND n."TrashBatchId" = {batchId} AND n."OwnerId" = {userId} AND b.depth <= {MaxBranchDepth}
+            )
+            SELECT "Id" AS "Value" FROM branch
+            """).ToListAsync();
+
     public Task<List<TrashNoteViewModel>> ListTrashAsync(Guid userId) =>
         database.Notes.AsNoTracking()
             .Where(note => note.OwnerId == userId && note.DeletedAt != null)

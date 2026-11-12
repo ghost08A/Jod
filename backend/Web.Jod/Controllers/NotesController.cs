@@ -26,8 +26,8 @@ public class NotesController(INoteService noteService, INoteStructureService not
         Ok(await noteStructureService.ListTrashAsync(User.GetUserId()));
 
     [HttpGet("search")]
-    public async Task<IActionResult> Search([FromQuery] string? q, [FromQuery] int skip = 0) =>
-        Ok(await noteSearchService.SearchAsync(User.GetUserId(), q, skip));
+    public async Task<IActionResult> Search([FromQuery] string? q, [FromQuery] int skip = 0, [FromQuery] Guid? parentId = null, [FromQuery] bool inTrash = false) =>
+        Ok(await noteSearchService.SearchAsync(User.GetUserId(), q, skip, parentId, inTrash));
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id) =>
@@ -44,6 +44,14 @@ public class NotesController(INoteService noteService, INoteStructureService not
     [HttpPost("{id:guid}/discard-empty")]
     public async Task<IActionResult> DiscardEmpty(Guid id, DiscardEmptyNoteRequestModel request) =>
         Ok(new { discarded = await noteStructureService.DiscardEmptyAsync(User.GetUserId(), id, request) });
+
+    [HttpPost("{id:guid}/restore")]
+    public async Task<IActionResult> Restore(Guid id) =>
+        Ok(await noteStructureService.RestoreAsync(User.GetUserId(), id));
+
+    [HttpDelete("{id:guid}/permanent")]
+    public async Task<IActionResult> DeletePermanently(Guid id) =>
+        Ok(new { deletedCount = await noteStructureService.DeletePermanentlyAsync(User.GetUserId(), id) });
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, [FromQuery] string scope = "branch") =>

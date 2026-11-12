@@ -26,6 +26,19 @@ public interface INoteStructureService
     /// </summary>
     Task<bool> DiscardEmptyAsync(Guid userId, Guid noteId, DiscardEmptyNoteRequestModel request);
 
+    /// <summary>
+    /// Takes a note out of the Trash. It goes back under its original parent (or among the roots) as the last child when that
+    /// place is still alive, otherwise Unplaced; descendants deleted in the same action come with it. Not in the Trash, missing
+    /// or foreign throws NotFound.
+    /// </summary>
+    Task<NoteListItemViewModel> RestoreAsync(Guid userId, Guid noteId);
+
+    /// <summary>
+    /// Physically removes a note in the Trash and its descendants in the same delete action. Returns how many were removed.
+    /// An alive, missing or foreign note throws NotFound.
+    /// </summary>
+    Task<int> DeletePermanentlyAsync(Guid userId, Guid noteId);
+
     /// <summary>Every deleted note of the user, newest delete first, as it sat when it was deleted.</summary>
     Task<List<TrashNoteViewModel>> ListTrashAsync(Guid userId);
 }

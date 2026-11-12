@@ -1,4 +1,5 @@
 using Jod.Domain;
+using Jod.Domain.Enums;
 using Jod.Domain.Interfaces;
 using Jod.Domain.ViewModels;
 using Jod.Service.Data;
@@ -12,10 +13,11 @@ public class NoteSearchService(JodDbContext database) : INoteSearchService
     private const int PageSize = 50;
     private const int MaxQueryLength = 200;
     private const int MaxAncestors = 200;
+    private const int MaxBranchDepth = 1000;
 
-    public async Task<NoteSearchPageViewModel> SearchAsync(Guid userId, string? query, int skip)
+    public async Task<NoteSearchPageViewModel> SearchAsync(Guid userId, string? query, int skip, Guid? parentId = null, bool inTrash = false)
     {
-        if (skip < 0)
+        if (skip < 0 || (parentId is not null && inTrash))
         {
             throw new CustomError("ข้อมูลที่ส่งมาไม่ถูกต้อง");
         }
@@ -38,9 +40,20 @@ public class NoteSearchService(JodDbContext database) : INoteSearchService
         // Note: the user's text is only ever a parameter. %, _ and the escape character are escaped so they match themselves
         var pattern = "%" + text.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
         // Note: one more than a page is read, so "more exist" is known without a second query
-        var found = await database.Notes.AsNoTracking()
-            .Where(note => note.OwnerId == userId && note.DeletedAt == null
-                && (EF.Functions.ILike(note.Title, pattern, "\\") || EF.Functions.ILike(note.SearchText, pattern, "\\")))
+        var notes = database.Notes.AsNoTracking()
+            .Where(note => note.OwnerId == userId && (note.DeletedAt != null) == inTrash);
+        if (parentId is { } parent)
+        {
+            // ponytail: the branch ids are read first and passed as one array; a very large branch would want a join in SQL
+            var branch = await AliveBranchAsync(userId, parent);
+            if (branch.Count == 0)
+            {
+                throw new CustomError("ไม่พบโน้ตนี้", ErrorKind.NotFound);
+            }
+            notes = notes.Where(note => branch.Contains(note.Id));
+        }
+        var found = await notes
+            .Where(note => EF.Functions.ILike(note.Title, pattern, "\\") || EF.Functions.ILike(note.SearchText, pattern, "\\"))
             .OrderByDescending(note => EF.Functions.ILike(note.Title, pattern, "\\"))
             .ThenByDescending(note => note.UpdatedAt)
             .ThenBy(note => note.Id)
@@ -51,7 +64,7 @@ public class NoteSearchService(JodDbContext database) : INoteSearchService
             .ToListAsync();
 
         var page = found.Take(PageSize).ToList();
-        var paths = await LoadPathsAsync(userId, page.Where(note => note.ParentId != null).Select(note => note.Id).ToArray());
+        var paths = await LoadPathsAsync(userId, page.Select(note => note.Id).ToArray());
         return new NoteSearchPageViewModel
         {
             HasMore = found.Count > PageSize,
@@ -66,7 +79,21 @@ public class NoteSearchService(JodDbContext database) : INoteSearchService
         };
     }
 
-    // Note: one recursive query walks up from every note of the page at once (no query per result). Depth is in the row and
+    // Note: the note and every alive descendant; empty when the note is missing, not the caller's or deleted
+    private Task<List<Guid>> AliveBranchAsync(Guid userId, Guid noteId) =>
+        database.Database.SqlQuery<Guid>($"""
+            WITH RECURSIVE branch ("Id", depth) AS (
+                SELECT "Id", 0 FROM "Notes" WHERE "Id" = {noteId} AND "OwnerId" = {userId} AND "DeletedAt" IS NULL
+                UNION
+                SELECT n."Id", b.depth + 1 FROM "Notes" n JOIN branch b ON n."ParentId" = b."Id"
+                WHERE n."DeletedAt" IS NULL AND n."OwnerId" = {userId} AND b.depth <= {MaxBranchDepth}
+            )
+            SELECT "Id" AS "Value" FROM branch
+            """).ToListAsync();
+
+    // Note: a deleted note's OriginalParentId is where it sat, so a Trash result gets its path from before the delete (an
+    // ancestor that is gone for good just ends the path); an alive note has no OriginalParentId, so ParentId is used.
+    // One recursive query walks up from every note of the page at once (no query per result). Depth is in the row and
     // the walk stops at the cap, so a cycle in corrupt data cannot run forever
     private async Task<Dictionary<Guid, List<NoteSearchPathItemViewModel>>> LoadPathsAsync(Guid userId, Guid[] noteIds)
     {
@@ -76,11 +103,11 @@ public class NoteSearchService(JodDbContext database) : INoteSearchService
         }
         var rows = await database.Database.SqlQuery<AncestorRow>($"""
             WITH RECURSIVE chain ("StartId", "AncestorId", "NextId", "AncestorTitle", depth) AS (
-                SELECT n."Id", p."Id", p."ParentId", p."Title", 1
-                FROM "Notes" n JOIN "Notes" p ON p."Id" = n."ParentId" AND p."OwnerId" = {userId}
+                SELECT n."Id", p."Id", COALESCE(p."OriginalParentId", p."ParentId"), p."Title", 1
+                FROM "Notes" n JOIN "Notes" p ON p."Id" = COALESCE(n."OriginalParentId", n."ParentId") AND p."OwnerId" = {userId}
                 WHERE n."Id" = ANY({noteIds}) AND n."OwnerId" = {userId}
                 UNION ALL
-                SELECT c."StartId", p."Id", p."ParentId", p."Title", c.depth + 1
+                SELECT c."StartId", p."Id", COALESCE(p."OriginalParentId", p."ParentId"), p."Title", c.depth + 1
                 FROM chain c JOIN "Notes" p ON p."Id" = c."NextId" AND p."OwnerId" = {userId}
                 WHERE c.depth < {MaxAncestors}
             )
