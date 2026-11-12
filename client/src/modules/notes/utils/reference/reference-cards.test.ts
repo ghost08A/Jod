@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ReferenceCardInfo } from '../../types/note'
 import type { NoteBlock, NoteDocument } from '../editor/block-document'
-import { extractReferenceNoteIds, insertReferenceAfter, toReferenceCardView } from './reference-cards'
+import { extractReferenceNoteIds, toReferenceCardView } from './reference-cards'
 
 const documentOf = (blocks: NoteBlock[]): NoteDocument => ({ schemaVersion: 1, blocks })
 
@@ -26,37 +26,6 @@ describe('extractReferenceNoteIds', () => {
 
     it('returns nothing for a document without cards', () => {
         expect(extractReferenceNoteIds(documentOf([{ id: 'a', type: 'paragraph', text: '' }]))).toEqual([])
-    })
-})
-
-describe('insertReferenceAfter', () => {
-    const card: NoteBlock = { id: 'new', type: 'reference', noteId: 'n9' }
-
-    it('puts the card right after a top-level block', () => {
-        const document = documentOf([
-            { id: 'a', type: 'paragraph', text: '1' },
-            { id: 'b', type: 'paragraph', text: '2' },
-        ])
-
-        expect(insertReferenceAfter(document, 'a', card).blocks.map((block) => block.id)).toEqual(['a', 'new', 'b'])
-    })
-
-    it('puts the card after a nested block, in the same list of children', () => {
-        const document = documentOf([
-            { id: 'a', type: 'toggle', text: '', children: [{ id: 'b', type: 'paragraph', text: '' }] },
-        ])
-
-        const result = insertReferenceAfter(document, 'b', card)
-
-        expect(result.blocks).toHaveLength(1)
-        expect((result.blocks[0] as { children: NoteBlock[] }).children.map((block) => block.id)).toEqual(['b', 'new'])
-    })
-
-    it('puts the card last when the block is not found, and leaves the input unchanged', () => {
-        const document = documentOf([{ id: 'a', type: 'paragraph', text: '' }])
-
-        expect(insertReferenceAfter(document, 'missing', card).blocks.map((block) => block.id)).toEqual(['a', 'new'])
-        expect(document.blocks).toHaveLength(1)
     })
 })
 

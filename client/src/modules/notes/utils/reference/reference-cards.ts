@@ -15,20 +15,6 @@ export function extractReferenceNoteIds(document: NoteDocument): string[] {
     return [...ids]
 }
 
-/** A copy of the document with the card right after the block that has this id, in the same list. Last at the top when the id is not found */
-export function insertReferenceAfter(document: NoteDocument, afterBlockId: string, card: NoteBlock): NoteDocument {
-    let isInserted = false
-    const insertInto = (blocks: readonly NoteBlock[]): NoteBlock[] =>
-        blocks.flatMap((block) => {
-            const copy = isContainerBlock(block) ? { ...block, children: insertInto(block.children) } : block
-            if (block.id !== afterBlockId || isInserted) return [copy]
-            isInserted = true
-            return [copy, card]
-        })
-    const blocks = insertInto(document.blocks)
-    return { schemaVersion: 1, blocks: isInserted ? blocks : [...blocks, card] }
-}
-
 export type ReferenceCardView = {
     titleLine: string
     /** The small line under the title; undefined shows nothing */

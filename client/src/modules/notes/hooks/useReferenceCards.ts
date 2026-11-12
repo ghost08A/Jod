@@ -21,11 +21,14 @@ export function useReferenceCards(noteIds: readonly string[]) {
     const load = useCallback(() => {
         if (key.length === 0) return
         const token = gate.begin()
-        // ponytail: cards for target notes past the first 100 stay without info; chunk the request if pages get that big
-        getReferenceCards(key.split(',').slice(0, MAX_CARDS_PER_REQUEST))
-            .then(({ items }) => {
+        const ids = key.split(',')
+        const chunks = Array.from({ length: Math.ceil(ids.length / MAX_CARDS_PER_REQUEST) }, (_, index) =>
+            ids.slice(index * MAX_CARDS_PER_REQUEST, (index + 1) * MAX_CARDS_PER_REQUEST),
+        )
+        Promise.all(chunks.map((chunk) => getReferenceCards(chunk)))
+            .then((pages) => {
                 if (!gate.isCurrent(token)) return
-                setCards(new Map(items.map((item) => [item.noteId, item])))
+                setCards(new Map(pages.flatMap((page) => page.items).map((item) => [item.noteId, item])))
                 setHasFailed(false)
             })
             .catch(() => {
