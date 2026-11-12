@@ -12,6 +12,9 @@ public class JodDbContext(DbContextOptions<JodDbContext> options) : DbContext(op
     {
         base.OnModelCreating(builder);
 
+        // Note: trigram indexes make the substring search (ILIKE) fast, also for Thai (ADR 0011)
+        builder.HasPostgresExtension("pg_trgm");
+
         builder.Entity<AppUser>(entity =>
         {
             // Google documents "sub" as at most 255 ASCII characters; the unique index is what sign-in looks users up by
@@ -39,6 +42,9 @@ public class JodDbContext(DbContextOptions<JodDbContext> options) : DbContext(op
             entity.Property(note => note.Title).HasMaxLength(200);
             entity.Property(note => note.Context).HasMaxLength(2000);
             entity.Property(note => note.Content).HasColumnType("jsonb");
+            entity.Property(note => note.SearchText).HasDefaultValue("");
+            entity.HasIndex(note => note.Title).HasMethod("gin").HasOperators("gin_trgm_ops");
+            entity.HasIndex(note => note.SearchText).HasMethod("gin").HasOperators("gin_trgm_ops");
             // The note list of one user, newest change first
             entity.HasIndex(note => new { note.OwnerId, note.UpdatedAt });
             entity.HasOne<AppUser>()

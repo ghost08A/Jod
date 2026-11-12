@@ -43,6 +43,7 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
             Title = NoteContentValidator.NormalizeTitle(request.Title, Limits),
             Context = NoteContentValidator.NormalizeContext(request.Context, Limits),
             Content = content.GetRawText(),
+            SearchText = NoteSearchText.FromContentJson(content.GetRawText()),
             Version = 1,
             CreatedAt = now,
             UpdatedAt = now,
@@ -93,6 +94,7 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
         var title = NoteContentValidator.NormalizeTitle(request.Title, Limits);
         var noteContext = NoteContentValidator.NormalizeContext(request.Context, Limits);
         var contentText = content.GetRawText();
+        var searchText = NoteSearchText.FromContentJson(contentText);
         var now = Now();
 
         // Note: the version check and the write are one conditional UPDATE, so of two saves that bring the
@@ -103,6 +105,7 @@ public class NoteService(JodDbContext database, IOptions<NoteOptions> noteOption
                 .SetProperty(note => note.Title, title)
                 .SetProperty(note => note.Context, noteContext)
                 .SetProperty(note => note.Content, contentText)
+                .SetProperty(note => note.SearchText, searchText)
                 .SetProperty(note => note.Version, note => note.Version + 1)
                 .SetProperty(note => note.UpdatedAt, now));
         if (changed == 0)

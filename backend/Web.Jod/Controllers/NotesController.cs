@@ -8,7 +8,7 @@ namespace Web.Jod.Controllers;
 // Note: every action needs sign-in (fallback policy). The owner is always the signed-in user, never a value from the body
 [ApiController]
 [Route("api/notes")]
-public class NotesController(INoteService noteService, INoteStructureService noteStructureService) : ControllerBase
+public class NotesController(INoteService noteService, INoteStructureService noteStructureService, INoteSearchService noteSearchService) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Create(CreateNoteRequestModel? request)
@@ -24,6 +24,10 @@ public class NotesController(INoteService noteService, INoteStructureService not
     [HttpGet("trash")]
     public async Task<IActionResult> Trash() =>
         Ok(await noteStructureService.ListTrashAsync(User.GetUserId()));
+
+    [HttpGet("search")]
+    public async Task<IActionResult> Search([FromQuery] string? q, [FromQuery] int skip = 0) =>
+        Ok(await noteSearchService.SearchAsync(User.GetUserId(), q, skip));
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id) =>

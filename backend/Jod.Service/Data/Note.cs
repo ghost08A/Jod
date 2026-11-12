@@ -15,6 +15,8 @@ public class Note
     // Note: kept as JSON text on purpose. Npgsql's own JsonDocument mapping reads with a depth limit of 64,
     // which cannot hold 100 nested block levels, and text passes through to jsonb untouched
     public required string Content { get; set; }
+    // Note: the plain text of Content for searching (see NoteSearchText); written in the same statement as every write of Content
+    public string SearchText { get; set; } = "";
     public int Version { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
