@@ -26,17 +26,16 @@ export function useNoteSearch(rawText: string) {
     const [state, setState] = useState<SearchState | undefined>(undefined)
 
     const loadFirstPage = useCallback(
-        (searched: string) => {
+        async (searched: string) => {
             const token = gate.begin()
-            searchNotes(searched, 0)
-                .then((page) => {
-                    if (gate.isCurrent(token)) setState({ query: searched, items: page.items, hasMore: page.hasMore, error: undefined, isLoadingMore: false })
-                })
-                .catch((failure: unknown) => {
-                    if (gate.isCurrent(token)) {
-                        setState({ query: searched, items: undefined, hasMore: false, error: toFailure(failure), isLoadingMore: false })
-                    }
-                })
+            try {
+                const page = await searchNotes(searched, 0)
+                if (gate.isCurrent(token)) setState({ query: searched, items: page.items, hasMore: page.hasMore, error: undefined, isLoadingMore: false })
+            } catch (failure) {
+                if (gate.isCurrent(token)) {
+                    setState({ query: searched, items: undefined, hasMore: false, error: toFailure(failure), isLoadingMore: false })
+                }
+            }
         },
         [gate],
     )
@@ -52,18 +51,17 @@ export function useNoteSearch(rawText: string) {
 
     const current = query !== undefined && state?.query === query ? state : undefined
 
-    const loadMore = useCallback(() => {
+    const loadMore = useCallback(async () => {
         if (query === undefined || current?.items === undefined || current.isLoadingMore) return
         const shown = current.items
         const token = gate.begin()
         setState({ ...current, error: undefined, isLoadingMore: true })
-        searchNotes(query, shown.length)
-            .then((page) => {
-                if (gate.isCurrent(token)) setState({ query, items: appendResults(shown, page.items), hasMore: page.hasMore, error: undefined, isLoadingMore: false })
-            })
-            .catch((failure: unknown) => {
-                if (gate.isCurrent(token)) setState({ query, items: shown, hasMore: current.hasMore, error: toFailure(failure), isLoadingMore: false })
-            })
+        try {
+            const page = await searchNotes(query, shown.length)
+            if (gate.isCurrent(token)) setState({ query, items: appendResults(shown, page.items), hasMore: page.hasMore, error: undefined, isLoadingMore: false })
+        } catch (failure) {
+            if (gate.isCurrent(token)) setState({ query, items: shown, hasMore: current.hasMore, error: toFailure(failure), isLoadingMore: false })
+        }
     }, [query, current, gate])
 
     const retry = useCallback(() => {
