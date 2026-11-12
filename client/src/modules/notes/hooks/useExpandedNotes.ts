@@ -2,13 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import type { NoteListItem } from '../types/note'
 import {
     EXPANDED_NOTES_STORAGE_KEY,
-    expandIds,
     parseExpandedIds,
-    pruneExpandedIds,
     serializeExpandedIds,
+    syncExpandedState,
     toggleExpandedId,
+    type ExpandedState,
 } from '../utils/tree/expanded-notes'
-import { noteAncestors } from '../utils/tree/note-ancestors'
 
 // Note: the storage may be missing or blocked; the tree then simply forgets its state on reload
 function readStored(): Set<string> {
@@ -24,18 +23,11 @@ function readStored(): Set<string> {
  * and the path to the open note is opened once per open note, so a branch the user closes afterwards stays closed
  */
 export function useExpandedNotes(items: NoteListItem[] | undefined, openNoteId: string | undefined) {
-    const [state, setState] = useState(() => ({ expanded: readStored(), items: undefined as NoteListItem[] | undefined, pathFor: undefined as string | undefined }))
+    const [state, setState] = useState<ExpandedState>(() => ({ expanded: readStored(), items: undefined, openNoteId: undefined, pathFor: undefined }))
 
-    if (items && (state.items !== items || (openNoteId !== undefined && state.pathFor !== openNoteId))) {
-        let expanded = pruneExpandedIds(state.expanded, items)
-        let pathFor = state.pathFor
-        // Note: an open note that is not in the list yet (just created) is tried again when the list arrives
-        if (openNoteId !== undefined && pathFor !== openNoteId && items.some((item) => item.id === openNoteId)) {
-            expanded = expandIds(expanded, noteAncestors(items, openNoteId).map((ancestor) => ancestor.id))
-            pathFor = openNoteId
-        }
-        setState({ expanded, items, pathFor })
-    }
+    // Note: state adjusted while rendering; syncExpandedState gives back the same state once it has looked at this list and note
+    const synced = syncExpandedState(state, items, openNoteId)
+    if (synced !== state) setState(synced)
 
     const { expanded } = state
     useEffect(() => {

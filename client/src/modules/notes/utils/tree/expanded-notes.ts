@@ -1,4 +1,5 @@
 import type { NoteListItem } from '../../types/note'
+import { noteAncestors } from './note-ancestors'
 
 export const EXPANDED_NOTES_STORAGE_KEY = 'jod.notes.expanded'
 
@@ -34,4 +35,30 @@ export function toggleExpandedId(expanded: Set<string>, id: string): Set<string>
     const next = new Set(expanded)
     if (!next.delete(id)) next.add(id)
     return next
+}
+
+export type ExpandedState = {
+    expanded: Set<string>
+    /** The list last looked at */
+    items: NoteListItem[] | undefined
+    /** The open note last looked at, found in the list or not */
+    openNoteId: string | undefined
+    /** The note whose path was opened; it stays closed after the user closes it, until another note is opened */
+    pathFor: string | undefined
+}
+
+/**
+ * Brings the state in line with a new list or a newly opened note: drops unknown ids and opens the path to the open note once.
+ * Returns the very same state when the list and the open note are the ones it already looked at, so calling it while
+ * rendering settles (an open note that is not in the list yet, such as one just created, is tried again when the list changes)
+ */
+export function syncExpandedState(state: ExpandedState, items: NoteListItem[] | undefined, openNoteId: string | undefined): ExpandedState {
+    if (!items || (state.items === items && state.openNoteId === openNoteId)) return state
+    let expanded = pruneExpandedIds(state.expanded, items)
+    let pathFor = state.pathFor
+    if (openNoteId !== undefined && pathFor !== openNoteId && items.some((item) => item.id === openNoteId)) {
+        expanded = expandIds(expanded, noteAncestors(items, openNoteId).map((ancestor) => ancestor.id))
+        pathFor = openNoteId
+    }
+    return { expanded, items, openNoteId, pathFor }
 }
