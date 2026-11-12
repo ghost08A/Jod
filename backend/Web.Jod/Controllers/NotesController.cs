@@ -8,7 +8,7 @@ namespace Web.Jod.Controllers;
 // Note: every action needs sign-in (fallback policy). The owner is always the signed-in user, never a value from the body
 [ApiController]
 [Route("api/notes")]
-public class NotesController(INoteService noteService) : ControllerBase
+public class NotesController(INoteService noteService, INoteStructureService noteStructureService) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Create(CreateNoteRequestModel? request)
@@ -28,4 +28,8 @@ public class NotesController(INoteService noteService) : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, UpdateNoteRequestModel request) =>
         Ok(await noteService.UpdateAsync(User.GetUserId(), id, request));
+
+    [HttpPut("{id:guid}/placement")]
+    public async Task<IActionResult> Move(Guid id, MoveNoteRequestModel request) =>
+        Ok(await noteStructureService.MoveAsync(User.GetUserId(), id, request));
 }
