@@ -40,7 +40,8 @@ export function useNoteDrag(items: NoteListItem[] | undefined, onMoved: () => vo
         const zone = isUnplacedTop ? 'inside' : zoneOf(event)
         const result = dropRequest(items, draggedId, targetId, zone)
         const next = result.ok && result.request ? { targetId, zone } : undefined
-        event.dataTransfer.dropEffect = next ? 'move' : 'none'
+        // Note: 'none' would stop the browser from firing drop at all, and the refused drop must show its reason
+        event.dataTransfer.dropEffect = 'move'
         setIndicator((current) => (current?.targetId === next?.targetId && current?.zone === next?.zone ? current : next))
     }
 
