@@ -11,6 +11,7 @@ const ALLOWED_PROPERTIES: Record<string, readonly string[]> = {
     checklist: ['id', 'type', 'text', 'checked', 'children'],
     code: ['id', 'type', 'text', 'language'],
     divider: ['id', 'type'],
+    reference: ['id', 'type', 'noteId'],
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -23,8 +24,9 @@ function isStoredBlock(value: unknown): value is Record<string, unknown> {
     const allowed = ALLOWED_PROPERTIES[value.type]
     if (!allowed || Object.keys(value).some((key) => !allowed.includes(key))) return false
     if (typeof value.id !== 'string' || value.id.length === 0) return false
-    if (value.type !== 'divider' && typeof value.text !== 'string') return false
+    if (value.type !== 'divider' && value.type !== 'reference' && typeof value.text !== 'string') return false
     if (value.type === 'heading' && value.level !== 1 && value.level !== 2 && value.level !== 3) return false
+    if (value.type === 'reference' && (typeof value.noteId !== 'string' || value.noteId.length === 0)) return false
     if ('checked' in value && typeof value.checked !== 'boolean') return false
     if ('language' in value && typeof value.language !== 'string') return false
     return !('children' in value) || isStoredBlockList(value.children)

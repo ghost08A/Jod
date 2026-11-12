@@ -217,3 +217,34 @@ describe('noteDocumentToTipTap and tipTapToNoteDocument', () => {
         expect(document.blocks[1]?.id).toBe('generated-2')
     })
 })
+
+describe('reference cards', () => {
+    it('round-trips a card with its id and noteId, at the top and inside a toggle and a list', () => {
+        const original: NoteDocument = {
+            schemaVersion: 1,
+            blocks: [
+                { id: 'r-1', type: 'reference', noteId: '11111111-1111-1111-1111-111111111111' },
+                {
+                    id: 't-1',
+                    type: 'toggle',
+                    text: 'พับ',
+                    children: [{ id: 'r-2', type: 'reference', noteId: '22222222-2222-2222-2222-222222222222' }],
+                },
+                {
+                    id: 'b-1',
+                    type: 'bullet',
+                    text: 'รายการ',
+                    children: [{ id: 'r-3', type: 'reference', noteId: '33333333-3333-3333-3333-333333333333' }],
+                },
+            ],
+        }
+
+        expect(tipTapToNoteDocument(noteDocumentToTipTap(original))).toEqual(original)
+    })
+
+    it('writes a card as a childless noteReference node', () => {
+        const tipTap = noteDocumentToTipTap({ schemaVersion: 1, blocks: [{ id: 'r', type: 'reference', noteId: 'n' }] })
+
+        expect(tipTap.content).toEqual([{ type: 'noteReference', attrs: { id: 'r', noteId: 'n' } }])
+    })
+})

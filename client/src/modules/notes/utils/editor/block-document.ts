@@ -31,6 +31,13 @@ export type DividerBlock = {
     type: 'divider'
 }
 
+/** A card that points at another note. The title is never stored here: it is loaded when the page opens */
+export type ReferenceBlock = {
+    id: string
+    type: 'reference'
+    noteId: string
+}
+
 export type BulletBlock = {
     id: string
     type: 'bullet'
@@ -62,7 +69,7 @@ export type ToggleBlock = {
 
 export type ContainerBlock = BulletBlock | NumberedBlock | ChecklistBlock | ToggleBlock
 
-export type LeafBlock = ParagraphBlock | HeadingBlock | QuoteBlock | CodeBlock | DividerBlock
+export type LeafBlock = ParagraphBlock | HeadingBlock | QuoteBlock | CodeBlock | DividerBlock | ReferenceBlock
 
 export type NoteBlock = LeafBlock | ContainerBlock
 

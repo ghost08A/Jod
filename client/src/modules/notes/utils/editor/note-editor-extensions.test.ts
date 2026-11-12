@@ -170,7 +170,7 @@ describe('the schema is restricted to what a Jod document can hold', () => {
             .sort()
 
         expect(nodesWithId).toEqual(
-            ['blockquote', 'codeBlock', 'details', 'heading', 'horizontalRule', 'listItem', 'paragraph', 'taskItem'].sort(),
+            ['blockquote', 'codeBlock', 'details', 'heading', 'horizontalRule', 'listItem', 'noteReference', 'paragraph', 'taskItem'].sort(),
         )
     })
 })

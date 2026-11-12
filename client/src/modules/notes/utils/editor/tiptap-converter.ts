@@ -108,6 +108,12 @@ function convertSingleNonListBlock(block: NoteBlock): TipTapNode {
                 attrs: { id: block.id },
             }
 
+        case 'reference':
+            return {
+                type: 'noteReference',
+                attrs: { id: block.id, noteId: block.noteId },
+            }
+
         case 'toggle': {
             const summaryContent = makeTextContent(block.text)
             const detailsChildren = convertBlocksToTipTapNodes(block.children)
@@ -300,6 +306,15 @@ function convertTipTapNodesToBlocks(
                     type: 'divider',
                 })
                 break
+
+            case 'noteReference': {
+                const noteId = node.attrs?.noteId
+                // Note: a card without a target is dropped, because the server refuses a card that has no note id
+                if (typeof noteId === 'string' && noteId.length > 0) {
+                    blocks.push({ id: readBlockId(node.attrs, generateId), type: 'reference', noteId })
+                }
+                break
+            }
 
             case 'bulletList': {
                 const items = Array.isArray(node.content) ? node.content : []
