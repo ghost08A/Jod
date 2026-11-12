@@ -29,6 +29,17 @@ describe('buildTrashTree', () => {
         expect(ids(tree[0].children[0].children)).toEqual(['g'])
     })
 
+    it('keeps a separate deletion apart: a note deleted alone stays a head even when its old parent is deleted later', () => {
+        // Note: b was deleted by itself (own batch) and still remembers a as its old parent; a was deleted afterwards with its branch
+        const b = { ...trashed('b', '2026-01-01T10:00:00Z', 'a'), trashBatchId: 'first' }
+        const a = { ...trashed('a', '2026-01-02T10:00:00Z'), trashBatchId: 'second' }
+        const c = { ...trashed('c', '2026-01-02T10:00:00Z', 'a'), trashBatchId: 'second' }
+        const tree = buildTrashTree([b, a, c])
+        expect(ids(tree)).toEqual(['a', 'b'])
+        expect(ids(tree[0].children)).toEqual(['c'])
+        expect(tree[1].children).toEqual([])
+    })
+
     it('makes a note a head when its parent is not in Trash', () => {
         expect(ids(buildTrashTree([trashed('x', '2026-01-01T10:00:00Z', 'alive')]))).toEqual(['x'])
     })
