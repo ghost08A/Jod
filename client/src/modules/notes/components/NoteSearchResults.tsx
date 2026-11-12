@@ -10,11 +10,14 @@ type NoteSearchResultsProps = {
     search: ReturnType<typeof useNoteSearch>
     /** Called when a result is chosen (the drawer closes) */
     onSelect: () => void
+    /** A branch filter is on, so a 404 means the chosen note is gone */
+    isBranchFiltered: boolean
+    onClearBranch: () => void
 }
 
 const SKELETON_ROW_COUNT = 5
 
-export function NoteSearchResults({ search, onSelect }: NoteSearchResultsProps) {
+export function NoteSearchResults({ search, onSelect, isBranchFiltered, onClearBranch }: NoteSearchResultsProps) {
     const { query, items, hasMore, error, isLoadingMore, isLoading, loadMore, retry } = search
     if (query === undefined) return null
 
@@ -24,6 +27,17 @@ export function NoteSearchResults({ search, onSelect }: NoteSearchResultsProps) 
                 {Array.from({ length: SKELETON_ROW_COUNT }, (_, index) => (
                     <span key={index} className="skeleton notes-list-skeleton" />
                 ))}
+            </div>
+        )
+    }
+
+    if (items === undefined && error?.status === 404 && isBranchFiltered) {
+        return (
+            <div>
+                <p className="notes-list-empty">ไม่พบโน้ตที่เลือกกรองแล้ว อาจถูกลบหรือไม่มีอยู่</p>
+                <button className="notes-secondary-button" type="button" onClick={onClearBranch}>
+                    ล้างตัวกรอง
+                </button>
             </div>
         )
     }

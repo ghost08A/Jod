@@ -74,3 +74,12 @@ export type NoteSearchPage = {
     items: NoteSearchResult[]
     hasMore: boolean
 }
+
+/** Where a search looks: every alive note, or only the Trash */
+export type SearchScope = 'all' | 'trash'
+
+/** Extra search options for the server. `parentId` and `inTrash` never go together */
+export type SearchOptions = {
+    parentId?: string
+    inTrash?: boolean
+}

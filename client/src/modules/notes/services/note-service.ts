@@ -1,5 +1,6 @@
 import { getJson, requestJson } from '../../../core/http/http-client'
-import type { DeleteScope, Note, NoteListItem, NoteSearchPage, PlacementRequest, TrashNoteItem } from '../types/note'
+import type { DeleteScope, Note, NoteListItem, NoteSearchPage, PlacementRequest, SearchOptions, TrashNoteItem } from '../types/note'
+import { buildSearchPath } from '../utils/search/search-request'
 
 /** Creates an empty note ("Untitled"): a child placed last under `parentId`, or an unplaced note without it */
 export function createNote(options: { parentId?: string } = {}): Promise<Note> {
@@ -45,7 +46,17 @@ export function discardEmptyNote(noteId: string, baseVersion: number): Promise<{
     return requestJson<{ discarded: boolean }>(`/api/notes/${encodeURIComponent(noteId)}/discard-empty`, { method: 'POST', body: { baseVersion } })
 }
 
+/** Brings a note back from Trash. 404 when it is not in Trash */
+export function restoreNote(noteId: string): Promise<NoteListItem> {
+    return requestJson<NoteListItem>(`/api/notes/${encodeURIComponent(noteId)}/restore`, { method: 'POST' })
+}
+
+/** Removes a trashed note for good, with its descendants of the same deletion that are still in Trash. 404 when it is not in Trash */
+export function deleteNotePermanently(noteId: string): Promise<{ deletedCount: number }> {
+    return requestJson<{ deletedCount: number }>(`/api/notes/${encodeURIComponent(noteId)}/permanent`, { method: 'DELETE' })
+}
+
 /** One page (50) of notes whose title or text holds `query`. `skip` is how many results the screen already holds */
-export function searchNotes(query: string, skip: number): Promise<NoteSearchPage> {
-    return getJson<NoteSearchPage>(`/api/notes/search?q=${encodeURIComponent(query)}&skip=${skip}`)
+export function searchNotes(query: string, skip: number, options: SearchOptions = {}): Promise<NoteSearchPage> {
+    return getJson<NoteSearchPage>(buildSearchPath(query, skip, options))
 }

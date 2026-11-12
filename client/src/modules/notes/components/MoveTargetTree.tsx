@@ -8,17 +8,20 @@ import { CANNOT_MOVE_INTO_SELF_REASON, noteDescendantIds } from '../utils/tree/n
 
 type MoveTargetTreeProps = {
     items: NoteListItem[]
-    noteId: string
+    /** The note being moved; it and its descendants cannot be picked. Without it every note can be picked */
+    noteId?: string
     isMoving: boolean
     onPick: (targetId: string) => void
+    /** Text of each pick button; the row's title is added for screen readers */
+    pickLabel?: string
 }
 
 /** The notes as a tree to pick a new parent from. Starts closed except the path to the current parent; only open branches are drawn */
-export function MoveTargetTree({ items, noteId, isMoving, onPick }: MoveTargetTreeProps) {
+export function MoveTargetTree({ items, noteId, isMoving, onPick, pickLabel = 'ย้ายมาที่นี่' }: MoveTargetTreeProps) {
     const tree = useMemo(() => buildNoteTree(items), [items])
     // Note: worked out once here, not once per row (a row asks for every note on screen)
-    const blockedIds = useMemo(() => new Set([noteId, ...noteDescendantIds(items, noteId)]), [items, noteId])
-    const [expanded, setExpanded] = useState(() => expandIds(new Set(), noteAncestors(items, noteId).map((ancestor) => ancestor.id)))
+    const blockedIds = useMemo(() => new Set(noteId === undefined ? [] : [noteId, ...noteDescendantIds(items, noteId)]), [items, noteId])
+    const [expanded, setExpanded] = useState(() => expandIds(new Set(), (noteId === undefined ? [] : noteAncestors(items, noteId)).map((ancestor) => ancestor.id)))
     const sections = [
         { title: 'โน้ตหลัก', branches: tree.root },
         { title: 'รอจัดวาง', branches: tree.unplaced },
@@ -40,6 +43,7 @@ export function MoveTargetTree({ items, noteId, isMoving, onPick }: MoveTargetTr
                                     blockedIds={blockedIds}
                                     expanded={expanded}
                                     isMoving={isMoving}
+                                    pickLabel={pickLabel}
                                     onToggle={(id) => setExpanded((previous) => toggleExpandedId(previous, id))}
                                     onPick={onPick}
                                 />
@@ -52,6 +56,7 @@ export function MoveTargetTree({ items, noteId, isMoving, onPick }: MoveTargetTr
 }
 
 type TargetRowProps = Pick<MoveTargetTreeProps, 'isMoving' | 'onPick'> & {
+    pickLabel: string
     blockedIds: Set<string>
     branch: NoteBranch
     depth: number
@@ -62,7 +67,7 @@ type TargetRowProps = Pick<MoveTargetTreeProps, 'isMoving' | 'onPick'> & {
 /** Deeper levels are indented no further, so a very deep tree stays inside the dialog */
 const MAX_INDENT_DEPTH = 6
 
-function TargetRow({ branch, depth, blockedIds, expanded, isMoving, onToggle, onPick }: TargetRowProps) {
+function TargetRow({ pickLabel, branch, depth, blockedIds, expanded, isMoving, onToggle, onPick }: TargetRowProps) {
     const { item, children } = branch
     const title = normalizeNoteTitle(item.title)
     const isExpanded = expanded.has(item.id)
@@ -100,10 +105,10 @@ function TargetRow({ branch, depth, blockedIds, expanded, isMoving, onToggle, on
                     type="button"
                     disabled={!check.ok || isMoving}
                     aria-describedby={check.ok ? undefined : reasonId}
-                    aria-label={`ย้ายมาที่นี่: ${title}`}
+                    aria-label={`${pickLabel}: ${title}`}
                     onClick={() => onPick(item.id)}
                 >
-                    ย้ายมาที่นี่
+                    {pickLabel}
                 </button>
             </div>
             {children.length > 0 && isExpanded && (
@@ -116,6 +121,7 @@ function TargetRow({ branch, depth, blockedIds, expanded, isMoving, onToggle, on
                             blockedIds={blockedIds}
                             expanded={expanded}
                             isMoving={isMoving}
+                            pickLabel={pickLabel}
                             onToggle={onToggle}
                             onPick={onPick}
                         />

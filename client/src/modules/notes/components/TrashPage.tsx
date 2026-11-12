@@ -1,18 +1,20 @@
 import { useMemo, useState, type CSSProperties } from 'react'
-import { Link } from 'react-router'
+import { Link, useOutletContext } from 'react-router'
 import { ErrorMessage } from '../../../shared/components/ErrorMessage'
 import { useTrashList } from '../hooks/useTrashList'
-import type { TrashBranch } from '../types/note'
+import type { TrashBranch, TrashNoteItem } from '../types/note'
 import { normalizeNoteTitle } from '../utils/autosave/normalize-note-title'
 import { formatDateTimeMinutes } from '../utils/shell/format-date-time'
 import { buildNotePath } from '../utils/shell/note-path'
 import { buildTrashTree } from '../utils/tree/build-trash-tree'
+import { TrashNoteActions } from './TrashNoteActions'
 
 const SKELETON_ROW_COUNT = 5
 const MAX_INDENT_DEPTH = 6
 
 export function TrashPage() {
     const { items, error, isLoading, retry } = useTrashList()
+    const { refreshNoteList } = useOutletContext<{ refreshNoteList: () => void }>()
     const tree = useMemo(() => (items ? buildTrashTree(items) : undefined), [items])
     // Note: branches start closed and are not remembered
     const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
@@ -23,6 +25,11 @@ export function TrashPage() {
             if (!next.delete(id)) next.add(id)
             return next
         })
+    }
+
+    function restored() {
+        refreshNoteList()
+        retry()
     }
 
     return (
@@ -46,7 +53,7 @@ export function TrashPage() {
             ) : (
                 <ul className="notes-list">
                     {tree.map((branch) => (
-                        <TrashNode key={branch.item.id} branch={branch} depth={0} expanded={expanded} onToggle={toggle} />
+                        <TrashNode key={branch.item.id} branch={branch} depth={0} expanded={expanded} onToggle={toggle} items={items} onRestored={restored} onChanged={retry} />
                     ))}
                 </ul>
             )}
@@ -59,9 +66,13 @@ type TrashNodeProps = {
     depth: number
     expanded: Set<string>
     onToggle: (id: string) => void
+    items: TrashNoteItem[] | undefined
+    onRestored: () => void
+    /** Refresh the Trash list (after a delete for good, or when a note was already gone) */
+    onChanged: () => void
 }
 
-function TrashNode({ branch, depth, expanded, onToggle }: TrashNodeProps) {
+function TrashNode({ branch, depth, expanded, onToggle, items, onRestored, onChanged }: TrashNodeProps) {
     const { item, children } = branch
     const hasChildren = children.length > 0
     const isExpanded = expanded.has(item.id)
@@ -69,7 +80,7 @@ function TrashNode({ branch, depth, expanded, onToggle }: TrashNodeProps) {
 
     return (
         <li>
-            <div className="notes-tree-row" style={{ '--tree-depth': Math.min(depth, MAX_INDENT_DEPTH) } as CSSProperties}>
+            <div className="notes-tree-row notes-trash-row" style={{ '--tree-depth': Math.min(depth, MAX_INDENT_DEPTH) } as CSSProperties}>
                 {hasChildren ? (
                     <button
                         className="notes-tree-toggle"
@@ -89,11 +100,21 @@ function TrashNode({ branch, depth, expanded, onToggle }: TrashNodeProps) {
                     {title}
                 </Link>
                 {depth === 0 && <span className="notes-trash-date">{formatDateTimeMinutes(item.deletedAt)}</span>}
+                <TrashNoteActions noteId={item.id} items={items} onRestored={onRestored} onDeleted={onChanged} onGone={onChanged} />
             </div>
             {hasChildren && isExpanded && (
                 <ul className="notes-list">
                     {children.map((child) => (
-                        <TrashNode key={child.item.id} branch={child} depth={depth + 1} expanded={expanded} onToggle={onToggle} />
+                        <TrashNode
+                            key={child.item.id}
+                            branch={child}
+                            depth={depth + 1}
+                            expanded={expanded}
+                            onToggle={onToggle}
+                            items={items}
+                            onRestored={onRestored}
+                            onChanged={onChanged}
+                        />
                     ))}
                 </ul>
             )}
