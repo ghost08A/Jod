@@ -444,3 +444,18 @@ describe('createAutosaveController: conflict choices', () => {
         expect(context.createNote).not.toHaveBeenCalled()
     })
 })
+
+describe('createAutosaveController base version', () => {
+    it('reports the last version the server confirmed, also after the controller is disposed', async () => {
+        const { controller, saveNote } = setup()
+        saveNote.mockResolvedValue({ version: 2 })
+        expect(controller.getBaseVersion()).toBe(1)
+
+        controller.edit({ title: 'New' })
+        await vi.advanceTimersByTimeAsync(1_000)
+        controller.dispose()
+
+        expect(controller.getBaseVersion()).toBe(2)
+        expect(controller.getCurrentSnapshot().title).toBe('New')
+    })
+})

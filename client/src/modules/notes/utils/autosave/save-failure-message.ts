@@ -17,7 +17,7 @@ export function describeSaveFailure(failure: SaveFailureCause): { message: strin
         case 403:
             return { message: 'ไม่มีสิทธิ์บันทึกโน้ตนี้', canRetryHelp: false }
         case 404:
-            return { message: 'ไม่พบโน้ตนี้แล้ว อาจถูกลบจากที่อื่น', canRetryHelp: false }
+            return { message: 'ไม่พบโน้ตนี้ อาจถูกลบไปแล้ว ดูใน Trash', canRetryHelp: false }
         case 413:
             return { message: 'โน้ตนี้ใหญ่เกินกว่าจะบันทึกได้ ลองแบ่งเป็นหลายโน้ต', canRetryHelp: false }
         default:

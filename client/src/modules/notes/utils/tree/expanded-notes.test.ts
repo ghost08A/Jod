@@ -69,6 +69,16 @@ describe('syncExpandedState', () => {
         expect(syncExpandedState(closed, items, 'c')).toBe(closed)
         expect(syncExpandedState(closed, [...items], 'c').expanded.size).toBe(0)
     })
+    it('opens the path again when the open note gets another parent, then settles, and keeps a closed branch closed after that', () => {
+        const before = [item('p'), item('q'), child('c', 'p')]
+        const opened = syncExpandedState(start(), before, 'c')
+        const moved = [item('p'), item('q'), child('c', 'q')]
+        const reopened = syncExpandedState(opened, moved, 'c')
+        expect(reopened.expanded).toEqual(new Set(['p', 'q']))
+        expect(syncExpandedState(reopened, moved, 'c')).toBe(reopened)
+        const closed = { ...reopened, expanded: new Set<string>() }
+        expect(syncExpandedState(closed, [...moved], 'c').expanded.size).toBe(0)
+    })
     it('drops remembered ids that are no longer in the list', () => {
         const state = { ...start(), expanded: new Set(['gone', 'p']) }
         expect(syncExpandedState(state, [item('p')], undefined).expanded).toEqual(new Set(['p']))

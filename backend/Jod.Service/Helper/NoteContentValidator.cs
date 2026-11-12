@@ -205,7 +205,7 @@ public static class NoteContentValidator
     /// Counts Unicode code points (an emoji is 1, not 2). Returns -1 for text PostgreSQL cannot store:
     /// a NUL character or a half of a surrogate pair.
     /// </summary>
-    private static int CountCodePoints(string text)
+    internal static int CountCodePoints(string text)
     {
         var count = 0;
         for (var index = 0; index < text.Length;)

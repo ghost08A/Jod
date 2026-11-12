@@ -69,6 +69,8 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IGoogleIdTokenVerifier, GoogleIdTokenVerifier>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<INoteService, NoteService>();
+builder.Services.AddScoped<INoteStructureService, NoteStructureService>();
+builder.Services.AddScoped<INoteSearchService, NoteSearchService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)

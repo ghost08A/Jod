@@ -4,8 +4,13 @@ import { ErrorMessage } from '../../../shared/components/ErrorMessage'
 import { useCurrentUser } from '../../auth/hooks/useCurrentUser'
 import { useSignOut } from '../../auth/hooks/useSignOut'
 import { useNoteList } from '../hooks/useNoteList'
+import { useNoteSearch } from '../hooks/useNoteSearch'
 import { nextFocusIndex } from '../utils/shell/next-focus-index'
 import { NewNoteButton } from './NewNoteButton'
+import type { SearchScope } from '../types/note'
+import { NoteSearchBox } from './NoteSearchBox'
+import { NoteSearchFilters } from './NoteSearchFilters'
+import { NoteSearchResults } from './NoteSearchResults'
 import { NoteTree } from './NoteTree'
 
 const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled])'
@@ -24,6 +29,12 @@ type NoteSidebarProps = {
 export function NoteSidebar({ isDrawer, isOpen, openerRef, onClose, noteList }: NoteSidebarProps) {
     const [panel, setPanel] = useState<HTMLElement | null>(null)
     const { items, error, isLoading, refresh, retry } = noteList
+    const [searchText, setSearchText] = useState('')
+    // Note: scope and branch live only here: not in a URL, not in storage
+    const [scope, setScope] = useState<SearchScope>('all')
+    const [parentId, setParentId] = useState<string | undefined>(undefined)
+    const search = useNoteSearch(searchText, scope, parentId)
+    const isSearching = search.query !== undefined
     const isModal = isDrawer && isOpen
     useDrawerBehavior(isModal ? panel : null, openerRef, onClose)
 
@@ -56,9 +67,25 @@ export function NoteSidebar({ isDrawer, isOpen, openerRef, onClose, noteList }: 
                     </button>
                 )}
             </div>
-            <nav className="notes-sidebar-nav" aria-label="โน้ตของฉัน">
-                <NoteTree items={items} error={error} isLoading={isLoading} onRetry={retry} onSelect={handleNavigated} />
+            <NoteSearchBox value={searchText} onChange={setSearchText} />
+            <NoteSearchFilters scope={scope} onScopeChange={setScope} parentId={parentId} onParentChange={setParentId} items={items} />
+            {/* Note: the tree is hidden, not removed, while searching, so its open branches and scroll position stay as they were */}
+            <nav className="notes-sidebar-nav" aria-label="โน้ตของฉัน" hidden={isSearching}>
+                <NoteTree items={items} error={error} isLoading={isLoading} onRetry={retry} onSelect={handleNavigated} onMoved={refresh} />
             </nav>
+            {isSearching && (
+                <nav className="notes-sidebar-nav" aria-label="ผลการค้นหา">
+                    <NoteSearchResults
+                        search={search}
+                        onSelect={handleNavigated}
+                        isBranchFiltered={parentId !== undefined && scope === 'all'}
+                        onClearBranch={() => setParentId(undefined)}
+                    />
+                </nav>
+            )}
+            <Link className="notes-trash-link" to="/trash" onClick={handleNavigated} hidden={isSearching}>
+                Trash
+            </Link>
             <SidebarFooter />
         </aside>
     )
@@ -76,6 +103,8 @@ function useDrawerBehavior(panel: HTMLElement | null, openerRef: RefObject<HTMLE
         document.body.style.overflow = 'hidden'
 
         function handleKeyDown(event: KeyboardEvent) {
+            // Note: a modal opened from the drawer (the branch picker) handles its own keys
+            if (document.querySelector('dialog[open]')) return
             if (event.key === 'Escape') {
                 event.preventDefault()
                 onClose()

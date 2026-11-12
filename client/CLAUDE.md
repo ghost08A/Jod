@@ -68,6 +68,10 @@ src/
 - A 409 carries the server's current note in `ApiError.extensions.payload`; the conflict page compares it with the text on screen and never overwrites either side without a confirm and a copy button
 - Note text (title, context, content) is never logged, never put in a URL, and never kept in `localStorage`/`sessionStorage`
 - The editor (TipTap, large) and the conflict page are lazy chunks, so the sign-in page does not load them
+- The sidebar tree, Trash, move dialog, drag and drop and search live in `modules/notes`; their logic is pure and tested in `utils/tree`, `utils/drafts` and `utils/search` (for example `build-note-tree`, `note-drop`, `permanent-delete-count`, `search-request`)
+- Drag and drop uses native HTML5 events only (no dependency); the menu and the up/down buttons stay as the phone and keyboard path. A refused drop must keep `dropEffect = 'move'`, otherwise the browser never fires `drop` and the reason is not shown
+- A note made by the "New note" button and left untouched is removed by the server (`discard-empty`): the client only asks, the server decides. The call is deferred by one tick because React StrictMode unmounts once
+- The search text, the chosen branch and the scope live in component state only: never in a URL, `localStorage` or a log. The expanded ids in `localStorage` are a convenience (the key is per browser, not per user)
 - Show errors with `ErrorMessage` and sign out with `useSignOut` instead of writing them again
 
 ### Rules

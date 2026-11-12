@@ -2,6 +2,7 @@ import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterP
 import { AccountPage } from '../../modules/auth/components/AccountPage'
 import { LoginPage } from '../../modules/auth/components/LoginPage'
 import { NotePage } from '../../modules/notes/components/NotePage'
+import { TrashPage } from '../../modules/notes/components/TrashPage'
 import { NotesWorkspace } from '../../modules/notes/components/NotesWorkspace'
 import { RequireAuth } from './RequireAuth'
 
@@ -14,6 +15,7 @@ const router = createBrowserRouter(
                 <Route path="/" element={<NotesWorkspace />}>
                     <Route index element={<p className="notes-empty-state">เลือกโน้ตหรือสร้างโน้ตใหม่</p>} />
                     <Route path="notes/:noteId" element={<NotePage />} />
+                    <Route path="trash" element={<TrashPage />} />
                 </Route>
                 <Route path="/account" element={<AccountPage />} />
             </Route>

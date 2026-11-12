@@ -3,6 +3,7 @@ import { useMatch } from 'react-router'
 import type { ApiError } from '../../../core/http/api-error'
 import { ErrorMessage } from '../../../shared/components/ErrorMessage'
 import { useExpandedNotes } from '../hooks/useExpandedNotes'
+import { useNoteDrag } from '../hooks/useNoteDrag'
 import type { NoteBranch, NoteListItem } from '../types/note'
 import { buildNoteTree } from '../utils/tree/build-note-tree'
 import { NoteTreeNode } from './NoteTreeNode'
@@ -14,14 +15,17 @@ type NoteTreeProps = {
     onRetry: () => void
     /** Called when a row is chosen (the drawer closes) */
     onSelect: () => void
+    /** Called after a drag and drop move worked; the list should refresh */
+    onMoved: () => void
 }
 
 const SKELETON_ROW_COUNT = 5
 
-export function NoteTree({ items, error, isLoading, onRetry, onSelect }: NoteTreeProps) {
+export function NoteTree({ items, error, isLoading, onRetry, onSelect, onMoved }: NoteTreeProps) {
     const openNoteId = useMatch('/notes/:noteId')?.params.noteId
     const { expanded, toggle } = useExpandedNotes(items, openNoteId)
     const tree = useMemo(() => (items ? buildNoteTree(items) : undefined), [items])
+    const drag = useNoteDrag(items, onMoved)
 
     if (error) {
         return (
@@ -48,8 +52,9 @@ export function NoteTree({ items, error, isLoading, onRetry, onSelect }: NoteTre
 
     return (
         <>
-            {tree.root.length > 0 && <NoteTreeSection title="โน้ตหลัก" branches={tree.root} expanded={expanded} onToggle={toggle} onSelect={onSelect} />}
-            {tree.unplaced.length > 0 && <NoteTreeSection title="รอจัดวาง" branches={tree.unplaced} expanded={expanded} onToggle={toggle} onSelect={onSelect} />}
+            {drag.notice && <ErrorMessage styleScope="notes" message={drag.notice.message} reference={drag.notice.reference} />}
+            {tree.root.length > 0 && <NoteTreeSection title="โน้ตหลัก" branches={tree.root} expanded={expanded} onToggle={toggle} onSelect={onSelect} drag={drag} />}
+            {tree.unplaced.length > 0 && <NoteTreeSection title="รอจัดวาง" branches={tree.unplaced} expanded={expanded} onToggle={toggle} onSelect={onSelect} drag={drag} />}
         </>
     )
 }
@@ -60,15 +65,16 @@ type NoteTreeSectionProps = {
     expanded: Set<string>
     onToggle: (id: string) => void
     onSelect: () => void
+    drag: ReturnType<typeof useNoteDrag>
 }
 
-function NoteTreeSection({ title, branches, expanded, onToggle, onSelect }: NoteTreeSectionProps) {
+function NoteTreeSection({ title, branches, expanded, onToggle, onSelect, drag }: NoteTreeSectionProps) {
     return (
         <section className="notes-tree-section">
             <h2 className="notes-tree-heading">{title}</h2>
             <ul className="notes-list">
                 {branches.map((branch) => (
-                    <NoteTreeNode key={branch.item.id} branch={branch} depth={0} expanded={expanded} onToggle={onToggle} onSelect={onSelect} />
+                    <NoteTreeNode key={branch.item.id} branch={branch} depth={0} expanded={expanded} onToggle={onToggle} onSelect={onSelect} drag={drag} />
                 ))}
             </ul>
         </section>

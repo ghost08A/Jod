@@ -24,4 +24,6 @@ public class NoteViewModel
     public Guid? ParentId { get; set; }
 
     public int Position { get; set; }
+
+    public DateTimeOffset? DeletedAt { get; set; }
 }

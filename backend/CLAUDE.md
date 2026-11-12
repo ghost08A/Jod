@@ -12,6 +12,9 @@ This file provides guidance to AI coding agents (Claude Code, Codex, etc.) when 
 - Authentication: **Google Sign-In only** (ADR 0006). The backend verifies the Google ID token itself (signature, `aud`, `iss`, `exp`, `email_verified`), identifies the user by the Google `sub` and never trusts identity data sent by the frontend. Jod then issues its own JWT access token (15 minutes, held in memory by the client) and a rotating refresh token in an HttpOnly cookie. Only emails on the allowed list may sign in (closed group, default deny). There are no passwords, no email verification or reset links, and Jod sends no email
 - **Current code (checked 2026-10-21):** Google Sign-In is the only way in and it is implemented: `POST /api/auth/google` (`AuthController`), `IAuthService.SignInWithGoogleAsync`, `IGoogleIdTokenVerifier` (real class `GoogleIdTokenVerifier` wraps `Google.Apis.Auth`), `GoogleOptions` (`Google:ClientId`) and `AccessOptions` (`Access:AllowedEmails`). The users table is the simple `Users` table (`AppUser`: `Id`, `GoogleSubject` unique, `Email`, `CreatedAt`), not ASP.NET Core Identity. **Checked only with a fake verifier in tests**: a token really signed by Google has not been verified against the real class yet (manual check, spec 1a acceptance criterion 17)
 - **Notes (checked 2026-11-11):** `Notes` table (migration `AddNotes`, `Content` is `jsonb` mapped as a string), `NotesController` (`POST/GET /api/notes`, `GET/PUT /api/notes/{id}`), `INoteService`/`NoteService`, `NoteContentValidator` (static, iterative, in `Jod.Service/Helper`), `NoteOptions`. Save is a whole-note `PUT` with `baseVersion`; the version check and the write are one conditional `ExecuteUpdateAsync`; a stale version answers 409 with the current note in the `payload` member. Another user's note and a missing note both answer 404 (`ErrorKind.NotFound`)
+- **Note structure (spec 2a, checked 2026-11-12):** columns on `Notes`: `Placement` (unplaced/root/child, JSON strings), `ParentId`, `Position`, `DeletedAt`, `TrashBatchId`, `OriginalPlacement`, `OriginalParentId`, `SearchText` (migrations `AddNoteStructure`, `AddNoteTrash`, `AddNoteSearch`; the last one enables the `pg_trgm` extension and adds GIN trigram indexes on `Title` and `SearchText`, see ADR 0011). Endpoints: `PUT /api/notes/{id}/placement`, `DELETE /api/notes/{id}?scope=branch|single`, `GET /api/notes/trash`, `POST /api/notes/{id}/restore`, `DELETE /api/notes/{id}/permanent`, `POST /api/notes/{id}/discard-empty`, `GET /api/notes/search?q&skip&parentId&inTrash`
+- Structure changes (move, delete, restore, permanent delete, discard, create with parent) run in one transaction under a per-user advisory lock (`BeginLockedAsync` in `NoteStructureService`), so two tabs cannot make a cycle. Depth is capped at 200 by recursive CTEs. Sibling order is `Position` then `Id`. Structure changes do not bump `Version` or `UpdatedAt`. A deleted note stays readable; content save, move and create-child answer 404
+- Search uses `ILIKE` with `%`, `_` and `\` escaped, 50 per page (`skip`, `hasMore`), title matches first then newest. The search text is never logged: do not raise the `Microsoft.AspNetCore` log level to Information and do not add HTTP logging, because the URL carries the text
 - Never bring back passwords, email verification or reset links, email sending, or an "open registration" mode. Jod has none of them (ADR 0006). Email is used only as data: the allowed list, the address shown to the user, and the Share Link rule
 - Session design: JWT access token issue and validation, rotating refresh token, the `jod_refresh` cookie, the `X-Requested-With` check, the fallback "sign-in required" policy, the rate limiter, the error handler
 - Every endpoint needs sign-in unless it carries `[AllowAnonymous]` (fallback authorization policy), so a new endpoint is protected without anyone remembering to protect it
@@ -91,17 +94,17 @@ backend/
 ├── Jod.slnx
 ├── Jod.Domain/
 │   ├── Enums/                 # ErrorKind (what a CustomError means: validation, unauthorized, forbidden, not found, conflict, unavailable)
-│   ├── Interfaces/            # IAuthService, IGoogleIdTokenVerifier, INoteService
+│   ├── Interfaces/            # IAuthService, IGoogleIdTokenVerifier, INoteService, INoteStructureService, INoteSearchService
 │   ├── Models/                # AuthSessionModel, GoogleIdentity (between layers only)
 │   ├── RequestModels/         # GoogleSignInRequestModel (only the Google credential), CreateNoteRequestModel, UpdateNoteRequestModel
-│   ├── ViewModels/            # AuthResultViewModel, UserViewModel, NoteViewModel, NoteListItemViewModel
+│   ├── ViewModels/            # AuthResultViewModel, UserViewModel, NoteViewModel, NoteListItemViewModel, the trash list item, NoteSearchResultViewModel, NoteSearchPageViewModel, NoteSearchPathItemViewModel
 │   └── CustomError.cs         # business error: Messages + Kind
 ├── Jod.Service/
 │   ├── Data/                  # JodDbContext, AppUser (Google sub + email), RefreshToken, Note
-│   ├── ImplementServices/     # AuthService, GoogleIdTokenVerifier (the real Google check), NoteService
+│   ├── ImplementServices/     # AuthService, GoogleIdTokenVerifier (the real Google check), NoteService, NoteStructureService, NoteSearchService
 │   ├── Migrations/            # EF Core migrations (generated, see Database rules)
 │   ├── Options/               # JwtOptions, GoogleOptions (client id), AccessOptions (allowed emails), NoteOptions
-│   └── Helper/                # NoteContentValidator
+│   └── Helper/                # NoteContentValidator, NoteEmptiness, NoteSearchText, NoteSnippet
 ├── Jod.Service.Tests/         # unit tests: xUnit + Moq, pure logic, no database
 ├── Jod.Integration.Tests/     # S1 seam: the real app + a real PostgreSQL, called over HTTP
 └── Web.Jod/

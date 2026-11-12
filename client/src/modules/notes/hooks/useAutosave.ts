@@ -48,6 +48,8 @@ export function useAutosave(note: Note, refreshNoteList: () => void) {
     const [sideCopyResult, setSideCopyResult] = useState<ConflictCopyResult | undefined>(undefined)
     const [keepBothState, setKeepBothState] = useState<'working' | 'failed' | undefined>(undefined)
     const controllerRef = useRef<ReturnType<typeof createAutosaveController>>(undefined)
+    // Note: not cleared on unmount, because a disposed controller still holds the last text and version the leave check needs
+    const lastControllerRef = useRef<ReturnType<typeof createAutosaveController>>(undefined)
 
     useEffect(() => {
         const controller = createAutosaveController({
@@ -61,6 +63,7 @@ export function useAutosave(note: Note, refreshNoteList: () => void) {
             refreshNoteList,
         })
         controllerRef.current = controller
+        lastControllerRef.current = controller
 
         // Note: pagehide as well as visibilitychange, because some phones never fire beforeunload or unload
         const handleVisibilityChange = () => {
@@ -129,8 +132,14 @@ export function useAutosave(note: Note, refreshNoteList: () => void) {
         setKeepBothState(isDone ? undefined : 'failed')
     }, [])
 
+    const readSavedState = useCallback(() => {
+        const controller = lastControllerRef.current
+        return controller && { snapshot: controller.getCurrentSnapshot(), baseVersion: controller.getBaseVersion() }
+    }, [])
+
     return {
         view,
+        readSavedState,
         copyResult,
         editTitle,
         editContext,

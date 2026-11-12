@@ -1,4 +1,5 @@
 import type { NoteBranch, NoteListItem } from '../../types/note'
+import { compareSiblings } from './note-placement'
 
 /**
  * Builds the sidebar tree from the flat list (which the server sorts newest change first).
@@ -22,7 +23,7 @@ export function buildNoteTree(items: NoteListItem[]): { unplaced: NoteBranch[]; 
         visited.add(item.id)
         const children = (childrenOf.get(item.id) ?? [])
             .filter((child) => !visited.has(child.id))
-            .sort((a, b) => a.position - b.position)
+            .sort(compareSiblings)
             .map(toBranch)
         return { item, children }
     }
@@ -33,7 +34,7 @@ export function buildNoteTree(items: NoteListItem[]): { unplaced: NoteBranch[]; 
         if (item.placement === 'root') root.push(toBranch(item))
         else unplaced.push(toBranch(item))
     }
-    root.sort((a, b) => a.item.position - b.item.position)
+    root.sort((a, b) => compareSiblings(a.item, b.item))
     // Note: notes left over here are only reachable from a cycle, so they are shown as top-level unplaced
     for (const item of items) {
         if (!visited.has(item.id)) unplaced.push(toBranch(item))

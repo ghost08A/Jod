@@ -247,6 +247,10 @@ export function createAutosaveController({
         getCurrentSnapshot(): NoteSnapshot {
             return state.currentSnapshot
         },
+        /** The version the server last confirmed for this tab (what a discard of an untouched note must match) */
+        getBaseVersion(): number {
+            return state.baseVersion
+        },
         /** True when leaving this note now could lose text, so the user should be asked first */
         requestNoteSwitch(target: string): boolean {
             const { commands } = transitionAutosave(state, { type: 'noteSwitchRequested', targetNoteId: target })

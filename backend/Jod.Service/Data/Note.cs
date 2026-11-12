@@ -15,6 +15,8 @@ public class Note
     // Note: kept as JSON text on purpose. Npgsql's own JsonDocument mapping reads with a depth limit of 64,
     // which cannot hold 100 nested block levels, and text passes through to jsonb untouched
     public required string Content { get; set; }
+    // Note: the plain text of Content for searching (see NoteSearchText); written in the same statement as every write of Content
+    public string SearchText { get; set; } = "";
     public int Version { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
@@ -23,4 +25,11 @@ public class Note
     public Guid? ParentId { get; set; }
     /// <summary>Order among the notes that share the same parent.</summary>
     public int Position { get; set; }
+    /// <summary>When the note was deleted (it is in the Trash); null while it is alive.</summary>
+    public DateTimeOffset? DeletedAt { get; set; }
+    /// <summary>The same value for everything one delete action took to the Trash.</summary>
+    public Guid? TrashBatchId { get; set; }
+    // Note: where the note sat just before it was deleted; a later restore reads these
+    public NotePlacement? OriginalPlacement { get; set; }
+    public Guid? OriginalParentId { get; set; }
 }
