@@ -37,6 +37,10 @@ public class NotesController(INoteService noteService, INoteStructureService not
     public async Task<IActionResult> Move(Guid id, MoveNoteRequestModel request) =>
         Ok(await noteStructureService.MoveAsync(User.GetUserId(), id, request));
 
+    [HttpPost("{id:guid}/discard-empty")]
+    public async Task<IActionResult> DiscardEmpty(Guid id, DiscardEmptyNoteRequestModel request) =>
+        Ok(new { discarded = await noteStructureService.DiscardEmptyAsync(User.GetUserId(), id, request) });
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, [FromQuery] string scope = "branch") =>
         Ok(new { deletedCount = await noteStructureService.DeleteAsync(User.GetUserId(), id, scope) });

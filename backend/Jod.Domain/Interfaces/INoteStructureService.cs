@@ -19,6 +19,13 @@ public interface INoteStructureService
     /// </summary>
     Task<int> DeleteAsync(Guid userId, Guid noteId, string scope);
 
+    /// <summary>
+    /// Physically removes (no Trash) a note that is still untouched: alive, Unplaced, at baseVersion, default title,
+    /// empty context and content, and no note at all under it. Returns false and changes nothing otherwise.
+    /// A missing, foreign or deleted note throws NotFound; a missing or negative baseVersion throws a validation error.
+    /// </summary>
+    Task<bool> DiscardEmptyAsync(Guid userId, Guid noteId, DiscardEmptyNoteRequestModel request);
+
     /// <summary>Every deleted note of the user, newest delete first, as it sat when it was deleted.</summary>
     Task<List<TrashNoteViewModel>> ListTrashAsync(Guid userId);
 }

@@ -4,6 +4,7 @@ using Jod.Domain.Interfaces;
 using Jod.Domain.RequestModels;
 using Jod.Domain.ViewModels;
 using Jod.Service.Data;
+using Jod.Service.Helper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -178,6 +179,32 @@ public class NoteStructureService(JodDbContext database, TimeProvider timeProvid
         }
         await transaction.CommitAsync();
         return deleted;
+    }
+
+    public async Task<bool> DiscardEmptyAsync(Guid userId, Guid noteId, DiscardEmptyNoteRequestModel request)
+    {
+        if (request.BaseVersion is not ({ } baseVersion and >= 0))
+        {
+            throw new CustomError("ข้อมูลที่ส่งมาไม่ถูกต้อง");
+        }
+        // Note: same per-user lock as a move, a delete and creating a child, so nothing can be put under the note
+        // between the check and the removal
+        await using var transaction = await BeginLockedAsync(userId);
+        var note = await database.Notes.AsNoTracking()
+            .Where(n => n.Id == noteId && n.OwnerId == userId && n.DeletedAt == null)
+            .Select(n => new { n.Placement, n.Version, n.Title, n.Context, n.Content })
+            .SingleOrDefaultAsync() ?? throw NotFound();
+        if (note.Placement != NotePlacement.Unplaced || note.Version != baseVersion
+            || note.Title != NoteContentValidator.DefaultTitle || note.Context.Length != 0
+            || !NoteEmptiness.IsEmptyDocument(note.Content)
+            // Note: a child counts alive or in the Trash (the foreign key is Restrict)
+            || await database.Notes.AnyAsync(n => n.ParentId == noteId))
+        {
+            return false;
+        }
+        var removed = await database.Notes.Where(n => n.Id == noteId && n.OwnerId == userId).ExecuteDeleteAsync();
+        await transaction.CommitAsync();
+        return removed == 1;
     }
 
     // Note: the children take the deleted note's place in its sibling group (same placement and parent), in their own
