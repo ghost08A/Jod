@@ -4,7 +4,7 @@ import { normalizeNoteTitle } from '../utils/autosave/normalize-note-title'
 import { buildNoteTree } from '../utils/tree/build-note-tree'
 import { expandIds, toggleExpandedId } from '../utils/tree/expanded-notes'
 import { noteAncestors } from '../utils/tree/note-ancestors'
-import { canMoveInto } from '../utils/tree/note-placement'
+import { CANNOT_MOVE_INTO_SELF_REASON, noteDescendantIds } from '../utils/tree/note-placement'
 
 type MoveTargetTreeProps = {
     items: NoteListItem[]
@@ -16,6 +16,8 @@ type MoveTargetTreeProps = {
 /** The notes as a tree to pick a new parent from. Starts closed except the path to the current parent; only open branches are drawn */
 export function MoveTargetTree({ items, noteId, isMoving, onPick }: MoveTargetTreeProps) {
     const tree = useMemo(() => buildNoteTree(items), [items])
+    // Note: worked out once here, not once per row (a row asks for every note on screen)
+    const blockedIds = useMemo(() => new Set([noteId, ...noteDescendantIds(items, noteId)]), [items, noteId])
     const [expanded, setExpanded] = useState(() => expandIds(new Set(), noteAncestors(items, noteId).map((ancestor) => ancestor.id)))
     const sections = [
         { title: 'โน้ตหลัก', branches: tree.root },
@@ -35,8 +37,7 @@ export function MoveTargetTree({ items, noteId, isMoving, onPick }: MoveTargetTr
                                     key={branch.item.id}
                                     branch={branch}
                                     depth={0}
-                                    items={items}
-                                    noteId={noteId}
+                                    blockedIds={blockedIds}
                                     expanded={expanded}
                                     isMoving={isMoving}
                                     onToggle={(id) => setExpanded((previous) => toggleExpandedId(previous, id))}
@@ -50,7 +51,8 @@ export function MoveTargetTree({ items, noteId, isMoving, onPick }: MoveTargetTr
     )
 }
 
-type TargetRowProps = MoveTargetTreeProps & {
+type TargetRowProps = Pick<MoveTargetTreeProps, 'isMoving' | 'onPick'> & {
+    blockedIds: Set<string>
     branch: NoteBranch
     depth: number
     expanded: Set<string>
@@ -60,11 +62,11 @@ type TargetRowProps = MoveTargetTreeProps & {
 /** Deeper levels are indented no further, so a very deep tree stays inside the dialog */
 const MAX_INDENT_DEPTH = 6
 
-function TargetRow({ branch, depth, items, noteId, expanded, isMoving, onToggle, onPick }: TargetRowProps) {
+function TargetRow({ branch, depth, blockedIds, expanded, isMoving, onToggle, onPick }: TargetRowProps) {
     const { item, children } = branch
     const title = normalizeNoteTitle(item.title)
     const isExpanded = expanded.has(item.id)
-    const check = canMoveInto(items, noteId, item.id)
+    const check = blockedIds.has(item.id) ? { ok: false as const, reason: CANNOT_MOVE_INTO_SELF_REASON } : { ok: true as const }
     const reasonId = `notes-move-reason-${item.id}`
 
     return (
@@ -111,8 +113,7 @@ function TargetRow({ branch, depth, items, noteId, expanded, isMoving, onToggle,
                             key={child.item.id}
                             branch={child}
                             depth={depth + 1}
-                            items={items}
-                            noteId={noteId}
+                            blockedIds={blockedIds}
                             expanded={expanded}
                             isMoving={isMoving}
                             onToggle={onToggle}
