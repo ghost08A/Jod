@@ -39,3 +39,8 @@ export function deleteNote(noteId: string, scope: DeleteScope): Promise<{ delete
 export function listTrash(): Promise<TrashNoteItem[]> {
     return getJson<TrashNoteItem[]>('/api/notes/trash')
 }
+
+/** Asks the server to remove an untouched new note for good (not Trash). The server decides; `discarded: false` means it was kept */
+export function discardEmptyNote(noteId: string, baseVersion: number): Promise<{ discarded: boolean }> {
+    return requestJson<{ discarded: boolean }>(`/api/notes/${encodeURIComponent(noteId)}/discard-empty`, { method: 'POST', body: { baseVersion } })
+}

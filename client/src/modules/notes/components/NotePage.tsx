@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from 'react'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router'
 import { ErrorMessage } from '../../../shared/components/ErrorMessage'
 import { useAutosave } from '../hooks/useAutosave'
+import { useDiscardEmptyNote } from '../hooks/useDiscardEmptyNote'
 import { useNote } from '../hooks/useNote'
 import type { Note, NoteListItem } from '../types/note'
 import { AutosaveStatusIndicator } from './AutosaveStatusIndicator'
@@ -110,7 +111,8 @@ function DeletedNotePage({ note, deletedAt }: { note: Note; deletedAt: string })
 
 function LoadedNotePage({ note }: { note: Note }) {
     const { refreshNoteList, noteListItems } = useOutletContext<{ refreshNoteList: () => void; noteListItems: NoteListItem[] | undefined }>()
-    const { view, copyResult, editTitle, editContext, editContent, retry, copyContent, conflict } = useAutosave(note, refreshNoteList)
+    const { view, readSavedState, copyResult, editTitle, editContext, editContent, retry, copyContent, conflict } = useAutosave(note, refreshNoteList)
+    useDiscardEmptyNote(note.id, readSavedState, refreshNoteList)
     const { loadedNote, loadedRevision, conflictMyNote, conflictServerNote } = view
     const [isMoveOpen, setIsMoveOpen] = useState(false)
     const [isDeleteOpen, setIsDeleteOpen] = useState(false)

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { ApiError, toApiError } from '../../../core/http/api-error'
 import { createNote } from '../services/note-service'
+import { registerNewNoteDraft } from '../utils/drafts/new-note-drafts'
 import { buildNotePath } from '../utils/shell/note-path'
 
 type NewNoteButtonProps = {
@@ -25,6 +26,8 @@ export function NewNoteButton({ onCreated, parentId }: NewNoteButtonProps) {
         setIsCreating(true)
         try {
             const note = await createNote({ parentId })
+            // Note: only the top-level button registers; a child made with "add a child note" is never removed by itself
+            if (parentId === undefined) registerNewNoteDraft(note.id)
             navigate(buildNotePath(note.id))
             onCreated()
         } catch (failure) {
