@@ -1,5 +1,5 @@
 import { getJson, requestJson } from '../../../core/http/http-client'
-import type { Note, NoteListItem } from '../types/note'
+import type { Note, NoteListItem, PlacementRequest } from '../types/note'
 
 /** Creates an empty note ("Untitled"): a child placed last under `parentId`, or an unplaced note without it */
 export function createNote(options: { parentId?: string } = {}): Promise<Note> {
@@ -23,4 +23,9 @@ export function saveNote(
     keepalive = false,
 ): Promise<Note> {
     return requestJson<Note>(`/api/notes/${encodeURIComponent(noteId)}`, { method: 'PUT', body, keepalive })
+}
+
+/** Moves the note (with its whole branch) and sets its order. Does not touch the content version */
+export function placeNote(noteId: string, request: PlacementRequest): Promise<NoteListItem> {
+    return requestJson<NoteListItem>(`/api/notes/${encodeURIComponent(noteId)}/placement`, { method: 'PUT', body: request })
 }

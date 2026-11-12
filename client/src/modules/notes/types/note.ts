@@ -30,3 +30,10 @@ export type NoteBranch = {
     item: NoteListItem
     children: NoteBranch[]
 }
+
+/** Body of the placement call. `beforeId` puts the note right before that sibling; without it the note goes last */
+export type PlacementRequest = {
+    placement: NotePlacement
+    parentId?: string
+    beforeId?: string
+}

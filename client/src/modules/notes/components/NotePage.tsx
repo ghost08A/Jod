@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { Link, useOutletContext, useParams } from 'react-router'
 import { ErrorMessage } from '../../../shared/components/ErrorMessage'
 import { useAutosave } from '../hooks/useAutosave'
@@ -6,6 +6,7 @@ import { useNote } from '../hooks/useNote'
 import type { Note, NoteListItem } from '../types/note'
 import { AutosaveStatusIndicator } from './AutosaveStatusIndicator'
 import { Breadcrumb } from './Breadcrumb'
+import { MoveNoteDialog } from './MoveNoteDialog'
 import { NewNoteButton } from './NewNoteButton'
 import { NoteContextField } from './NoteContextField'
 import { NoteTitleField } from './NoteTitleField'
@@ -92,6 +93,7 @@ function LoadedNotePage({ note }: { note: Note }) {
     const { refreshNoteList, noteListItems } = useOutletContext<{ refreshNoteList: () => void; noteListItems: NoteListItem[] | undefined }>()
     const { view, copyResult, editTitle, editContext, editContent, retry, copyContent, conflict } = useAutosave(note, refreshNoteList)
     const { loadedNote, loadedRevision, conflictMyNote, conflictServerNote } = view
+    const [isMoveOpen, setIsMoveOpen] = useState(false)
     const isConflict = conflictMyNote !== undefined && conflictServerNote !== undefined
 
     // Note: the fields and the editor read their text once. When a newer note came from the server (only while
@@ -117,7 +119,12 @@ function LoadedNotePage({ note }: { note: Note }) {
             )}
             {/* Note: kept mounted but hidden during a conflict, so the fields keep their text and cannot be typed in */}
             <div className="notes-page-fields" hidden={isConflict}>
-                <Breadcrumb items={noteListItems} noteId={note.id} />
+                <div className="notes-page-toolbar">
+                    <Breadcrumb items={noteListItems} noteId={note.id} />
+                    <button className="notes-secondary-button notes-page-move-button" type="button" onClick={() => setIsMoveOpen(true)} disabled={!noteListItems}>
+                        จัดวาง
+                    </button>
+                </div>
                 <NewNoteButton parentId={note.id} onCreated={refreshNoteList} />
                 <NoteTitleField key={`title-${loadedRevision}`} initialTitle={loadedNote.title} onTitleChange={editTitle} />
                 <NoteContextField key={`context-${loadedRevision}`} initialContext={loadedNote.context} onContextChange={editContext} />
@@ -125,6 +132,9 @@ function LoadedNotePage({ note }: { note: Note }) {
                     <NoteEditor key={`editor-${loadedRevision}`} content={loadedNote.content} onDocumentChange={editContent} />
                 </Suspense>
             </div>
+            {isMoveOpen && noteListItems && (
+                <MoveNoteDialog noteId={note.id} items={noteListItems} onClose={() => setIsMoveOpen(false)} onMoved={refreshNoteList} />
+            )}
         </article>
     )
 }
