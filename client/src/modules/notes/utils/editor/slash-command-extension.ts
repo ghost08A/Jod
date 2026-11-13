@@ -13,11 +13,11 @@ export function isSlashMenuOpen(state: EditorState): boolean {
     return typeof pluginState === 'object' && pluginState !== null && 'active' in pluginState && pluginState.active === true
 }
 
-/** Inserts a divider after the block (the block goes when it is an empty line) and an empty paragraph to type in */
-function insertDivider(tr: Transaction, block: { node: ProseMirrorNode; pos: number }): void {
-    const { horizontalRule, paragraph } = tr.doc.type.schema.nodes
-    const dividerPos = insertBlock(tr, block.pos + block.node.nodeSize, horizontalRule.create(), undefined)
-    const paragraphPos = dividerPos + 1
+/** Inserts a block without text after the block (the block goes when it is an empty line) and an empty paragraph to type in */
+function insertAtomBlock(tr: Transaction, block: { node: ProseMirrorNode; pos: number }, atom: ProseMirrorNode): void {
+    const { paragraph } = tr.doc.type.schema.nodes
+    const atomPos = insertBlock(tr, block.pos + block.node.nodeSize, atom, undefined)
+    const paragraphPos = atomPos + 1
     tr.insert(paragraphPos, paragraph.create())
     const stepsBeforeRemove = tr.steps.length
     if (block.node.isTextblock && block.node.content.size === 0) removeBlock(tr, block)
@@ -34,7 +34,7 @@ export function applySlashCommand(tr: Transaction, range: Range, item: SlashComm
     const block = findCurrentBlock(tr.selection)
     if (!block) return undefined
     if (item.blockType === 'divider') {
-        insertDivider(tr, block)
+        insertAtomBlock(tr, block, tr.doc.type.schema.nodes.horizontalRule.create())
         return undefined
     }
 
@@ -48,6 +48,9 @@ export function applySlashCommand(tr: Transaction, range: Range, item: SlashComm
     let newBlock: ProseMirrorNode
     let wrapperType: NodeType | undefined
     switch (item.blockType) {
+        case 'reference':
+            // Note: never reached from the menu: "/reference" opens the picker, and insertReferenceCard places the card
+            return undefined
         case 'paragraph':
             newBlock = nodes.paragraph.create(attrs, text)
             break
@@ -88,6 +91,17 @@ export function applySlashCommand(tr: Transaction, range: Range, item: SlashComm
     tr.setSelection(TextSelection.create(tr.doc, textStart + $from.parentOffset))
     tr.scrollIntoView()
     return newPos
+}
+
+/** Replaces the typed "/reference" with a card for the note, at the line that holds the cursor. False when there is no line */
+export function insertReferenceCard(tr: Transaction, range: Range, noteId: string): boolean {
+    // Note: the picker was open, so the typed text is checked again before it is removed
+    const isRangeTyped = range.to <= tr.doc.content.size && tr.doc.textBetween(range.from, range.to).startsWith('/')
+    if (isRangeTyped) tr.delete(range.from, range.to)
+    const block = findCurrentBlock(tr.selection)
+    if (!block) return false
+    insertAtomBlock(tr, block, tr.doc.type.schema.nodes.noteReference.create({ noteId }))
+    return true
 }
 
 /** Opens a closed toggle. The open state lives only in the node view (never stored), so its button is pressed */
@@ -164,6 +178,8 @@ export function createSlashMenuRenderer(onChange: (menu: SlashMenuState | undefi
 
 type SlashCommandOptions = {
     render: SlashMenuRenderer | undefined
+    /** "/reference" opens a picker instead of changing the line; the text stays until a note is chosen */
+    onChooseReference: ((range: Range) => void) | undefined
 }
 
 /**
@@ -176,7 +192,7 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
     priority: 1000,
 
     addOptions() {
-        return { render: undefined }
+        return { render: undefined, onChooseReference: undefined }
     },
 
     addProseMirrorPlugins() {
@@ -195,6 +211,10 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
                 },
                 items: ({ query }) => filterAndRankSlashCommands(query),
                 command: ({ editor, range, props: item }) => {
+                    if (item.name === 'reference') {
+                        this.options.onChooseReference?.(range)
+                        return
+                    }
                     const tr = editor.state.tr
                     const blockPos = applySlashCommand(tr, range, item)
                     editor.view.dispatch(tr)

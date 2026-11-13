@@ -23,6 +23,7 @@ const BLOCK_TYPES = [
     'listItem',
     'taskItem',
     'details',
+    'noteReference',
 ]
 const LIST_WRAPPER_TYPES = ['bulletList', 'orderedList', 'taskList']
 

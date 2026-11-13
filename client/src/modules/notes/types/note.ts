@@ -83,3 +83,13 @@ export type SearchOptions = {
     parentId?: string
     inTrash?: boolean
 }
+
+/** What the server says about the note a reference card points at. `missing` is also what another user's note looks like */
+export type ReferenceCardInfo = {
+    noteId: string
+    status: 'alive' | 'trashed' | 'missing'
+    title: string | null
+    /** Title of the last parent; null when the note has none or is missing */
+    parentTitle: string | null
+    placement: NotePlacement | null
+}

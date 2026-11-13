@@ -6,7 +6,7 @@ import {
 } from './slash-commands'
 
 describe('SLASH_COMMAND_ITEMS', () => {
-    it('contains only the 11 commands in scope for 1b and excludes out-of-scope commands', () => {
+    it('contains only the 12 commands in scope (1b plus /reference) and excludes out-of-scope commands', () => {
         const commands = SLASH_COMMAND_ITEMS.map((item) => item.command)
 
         expect(commands).toEqual([
@@ -21,13 +21,14 @@ describe('SLASH_COMMAND_ITEMS', () => {
             '/divider',
             '/code',
             '/toggle',
+            '/reference',
         ])
     })
 })
 
 describe('filterAndRankSlashCommands', () => {
-    it('returns all 11 commands in default order when query is empty or just "/"', () => {
-        expect(filterAndRankSlashCommands('')).toHaveLength(11)
+    it('returns all 12 commands in default order when query is empty or just "/"', () => {
+        expect(filterAndRankSlashCommands('')).toHaveLength(12)
         expect(filterAndRankSlashCommands('/')).toEqual(SLASH_COMMAND_ITEMS)
     })
 

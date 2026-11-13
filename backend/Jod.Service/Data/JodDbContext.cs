@@ -7,6 +7,7 @@ public class JodDbContext(DbContextOptions<JodDbContext> options) : DbContext(op
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Note> Notes => Set<Note>();
+    public DbSet<NoteCardReference> NoteCardReferences => Set<NoteCardReference>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -33,6 +34,16 @@ public class JodDbContext(DbContextOptions<JodDbContext> options) : DbContext(op
             entity.HasOne<AppUser>()
                 .WithMany()
                 .HasForeignKey(token => token.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<NoteCardReference>(entity =>
+        {
+            // Note: the key is the unique pair, and its first column makes it the index by source note
+            entity.HasKey(reference => new { reference.SourceNoteId, reference.TargetNoteId });
+            entity.HasOne<Note>()
+                .WithMany()
+                .HasForeignKey(reference => reference.SourceNoteId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

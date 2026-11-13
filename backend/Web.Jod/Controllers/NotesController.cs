@@ -17,6 +17,10 @@ public class NotesController(INoteService noteService, INoteStructureService not
         return CreatedAtAction(nameof(Get), new { id = note.Id }, note);
     }
 
+    [HttpPost("cards")]
+    public async Task<IActionResult> Cards(NoteCardsRequestModel? request) =>
+        Ok(new { items = await noteService.GetCardsAsync(User.GetUserId(), request ?? new NoteCardsRequestModel()) });
+
     [HttpGet]
     public async Task<IActionResult> List() =>
         Ok(await noteService.ListAsync(User.GetUserId()));

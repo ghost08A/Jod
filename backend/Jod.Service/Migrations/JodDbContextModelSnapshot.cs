@@ -133,6 +133,19 @@ namespace Jod.Service.Migrations
                     b.ToTable("Notes");
                 });
 
+            modelBuilder.Entity("Jod.Service.Data.NoteCardReference", b =>
+                {
+                    b.Property<Guid>("SourceNoteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TargetNoteId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("SourceNoteId", "TargetNoteId");
+
+                    b.ToTable("NoteCardReferences");
+                });
+
             modelBuilder.Entity("Jod.Service.Data.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -189,6 +202,15 @@ namespace Jod.Service.Migrations
                         .WithMany()
                         .HasForeignKey("ParentId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Jod.Service.Data.NoteCardReference", b =>
+                {
+                    b.HasOne("Jod.Service.Data.Note", null)
+                        .WithMany()
+                        .HasForeignKey("SourceNoteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Jod.Service.Data.RefreshToken", b =>

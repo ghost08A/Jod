@@ -1256,3 +1256,73 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* Reference card: one block that opens another note */
+.notes-reference {
+    margin: var(--space-2) 0;
+}
+
+.notes-reference-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    width: 100%;
+    min-height: 48px;
+    padding: var(--space-3);
+    font: inherit;
+    color: var(--color-text);
+    text-align: left;
+    background: var(--color-surface-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    cursor: pointer;
+}
+
+.notes-reference-card:hover {
+    background: var(--color-row-hover-bg);
+}
+
+.notes-reference-card:active {
+    background: var(--color-row-active-bg);
+}
+
+.notes-reference-card:focus-visible,
+.notes-reference[data-selected='true'] .notes-reference-card {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.notes-reference-card[aria-disabled='true'] {
+    color: var(--color-disabled-text);
+    background: var(--color-disabled-bg);
+    cursor: not-allowed;
+}
+
+.notes-reference-title {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.notes-reference-parent,
+.notes-reference-label {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+.notes-reference-skeleton {
+    display: block;
+    height: 48px;
+}
+
+.notes-reference-result {
+    width: 100%;
+    font: inherit;
+    text-align: left;
+    background: none;
+    border: 0;
+}
+
+.notes-reference-result:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: -2px;
+}

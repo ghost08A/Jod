@@ -1,14 +1,16 @@
-import type { JSONContent } from '@tiptap/core'
+import type { JSONContent, Range } from '@tiptap/core'
 import { Fragment, Slice } from '@tiptap/pm/model'
 import type { EditorView } from '@tiptap/pm/view'
-import { useEditor, type UseEditorOptions } from '@tiptap/react'
-import { useState } from 'react'
+import { ReferenceCardNodeView } from '../components/ReferenceCardNodeView'
+import { ReactNodeViewRenderer, useEditor, type UseEditorOptions } from '@tiptap/react'
+import { useMemo, useState } from 'react'
 import type { NoteDocument } from '../utils/editor/block-document'
 import { reissueDuplicateBlockIds } from '../utils/editor/block-id'
 import { isEmptyNoteDocument } from '../utils/editor/note-document-guard'
 import { createNoteEditorExtensions } from '../utils/editor/note-editor-extensions'
 import { pastedTextToParagraphBlocks } from '../utils/editor/paste-plain-text'
-import { createSlashMenuRenderer, type SlashMenuState } from '../utils/editor/slash-command-extension'
+import { createSlashMenuRenderer, insertReferenceCard, type SlashMenuState } from '../utils/editor/slash-command-extension'
+import { extractReferenceNoteIds } from '../utils/reference/reference-cards'
 import { noteDocumentToTipTap, tipTapToNoteDocument, type TipTapNode } from '../utils/editor/tiptap-converter'
 
 /** Inserts pasted plain text at the selection: one line joins the current text, more lines become paragraphs */
@@ -72,8 +74,18 @@ export function useNoteEditor({ initialDocument, onDocumentChange, isReadOnly = 
     const [startsEmpty] = useState(() => isEmptyNoteDocument(initialDocument))
     const [content] = useState(() => noteDocumentToTipTap(initialDocument))
     const [slashMenu, setSlashMenu] = useState<SlashMenuState>()
-    const [extensions] = useState(() => createNoteEditorExtensions(createSlashMenuRenderer(setSlashMenu)))
+    // Note: set while the "/reference" picker is open; holds the typed "/reference" that the chosen card replaces
+    const [pickerRange, setPickerRange] = useState<Range>()
+    const [extensions] = useState(() =>
+        createNoteEditorExtensions(createSlashMenuRenderer(setSlashMenu), {
+            nodeView: ReactNodeViewRenderer(ReferenceCardNodeView),
+            onChoose: setPickerRange,
+        }),
+    )
     const [isEmpty, setIsEmpty] = useState(startsEmpty)
+    // Note: a string, so an edit that keeps the same cards does not render again or load the card info again
+    const [referenceKey, setReferenceKey] = useState(() => extractReferenceNoteIds(initialDocument).join(','))
+    const referenceNoteIds = useMemo(() => (referenceKey.length > 0 ? referenceKey.split(',') : []), [referenceKey])
 
     const editor = useEditor({
         extensions,
@@ -87,9 +99,28 @@ export function useNoteEditor({ initialDocument, onDocumentChange, isReadOnly = 
             if (transaction.getMeta('addToHistory') === false) return
             const document = toNoteDocument(currentEditor.getJSON())
             setIsEmpty(isEmptyNoteDocument(document))
+            setReferenceKey(extractReferenceNoteIds(document).join(','))
             onDocumentChange?.(document)
         },
     })
 
-    return { editor, isEmpty, slashMenu }
+    const referencePicker = {
+        isOpen: pickerRange !== undefined,
+        /** Puts a card for the note at the cursor line and gives the cursor back to the editor */
+        pick: (noteId: string) => {
+            if (editor && pickerRange) {
+                const tr = editor.state.tr
+                if (insertReferenceCard(tr, pickerRange, noteId)) editor.view.dispatch(tr)
+            }
+            setPickerRange(undefined)
+            editor?.commands.focus()
+        },
+        /** Closing without a choice leaves the text as it is and returns the cursor */
+        close: () => {
+            setPickerRange(undefined)
+            editor?.commands.focus()
+        },
+    }
+
+    return { editor, isEmpty, slashMenu, referenceNoteIds, referencePicker }
 }

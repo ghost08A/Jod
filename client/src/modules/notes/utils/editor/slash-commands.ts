@@ -12,6 +12,7 @@ export type SlashCommandName =
     | 'divider'
     | 'code'
     | 'toggle'
+    | 'reference'
 
 export type SlashCommandCategory = 'text-and-structure' | 'special-content'
 
@@ -26,7 +27,7 @@ export type SlashCommandItem = {
     keywords: readonly string[]
 }
 
-// Note: 1b includes only the 11 block commands in scope; /note, /reference, /link, /image, /file, /callout are excluded until their blocks exist
+// Note: 1b has the first 11 block commands; /reference was added by spec 2b; /note, /link, /image, /file, /callout are excluded until their blocks exist
 export const SLASH_COMMAND_ITEMS: readonly SlashCommandItem[] = [
     {
         name: 'text',
@@ -129,6 +130,15 @@ export const SLASH_COMMAND_ITEMS: readonly SlashCommandItem[] = [
         title: 'เนื้อหาพับเก็บได้',
         description: 'ซ่อนและขยายรายละเอียดข้างในได้',
         keywords: ['details', 'collapse', 'expand', 'พับ', 'ซ่อน'],
+    },
+    {
+        name: 'reference',
+        command: '/reference',
+        blockType: 'reference',
+        category: 'special-content',
+        title: 'การ์ดอ้างอิงโน้ต',
+        description: 'แทรกการ์ดที่เปิดไปยังโน้ตอื่นได้',
+        keywords: ['note', 'card', 'link', 'อ้างอิง', 'การ์ด', 'โน้ต'],
     },
 ]
 

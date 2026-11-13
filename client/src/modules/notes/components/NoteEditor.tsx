@@ -2,11 +2,14 @@ import { EditorContent, useEditorState } from '@tiptap/react'
 import { useEffect, useId, useState } from 'react'
 import { ErrorMessage } from '../../../shared/components/ErrorMessage'
 import { useNoteEditor } from '../hooks/useNoteEditor'
+import { useReferenceCards } from '../hooks/useReferenceCards'
 import type { NoteDocument } from '../utils/editor/block-document'
 import { indentBlock, outdentBlock } from '../utils/editor/block-nesting'
 import { createChildInEditor, indentInEditor, outdentInEditor } from '../utils/editor/nesting-keys'
 import { normalizeNoteDocument } from '../utils/editor/note-document-guard'
 import { MobileNestingToolbar } from './MobileNestingToolbar'
+import { ReferenceCardsContext } from './ReferenceCardsContext'
+import { ReferencePickerDialog } from './ReferencePickerDialog'
 import { SlashMenu } from './SlashMenu'
 
 type NoteEditorProps = {
@@ -38,7 +41,8 @@ type NoteEditorSurfaceProps = {
 }
 
 function NoteEditorSurface({ initialDocument, onDocumentChange, isReadOnly }: NoteEditorSurfaceProps) {
-    const { editor, isEmpty, slashMenu } = useNoteEditor({ initialDocument, onDocumentChange, isReadOnly })
+    const { editor, isEmpty, slashMenu, referenceNoteIds, referencePicker } = useNoteEditor({ initialDocument, onDocumentChange, isReadOnly })
+    const referenceCards = useReferenceCards(referenceNoteIds)
     const slashListId = useId()
     const status = useEditorState({
         editor,
@@ -71,7 +75,10 @@ function NoteEditorSurface({ initialDocument, onDocumentChange, isReadOnly }: No
                     พิมพ์เนื้อหาที่นี่…
                 </p>
             )}
-            <EditorContent editor={editor} />
+            <ReferenceCardsContext value={referenceCards}>
+                <EditorContent editor={editor} />
+            </ReferenceCardsContext>
+            {referencePicker.isOpen && <ReferencePickerDialog onPick={referencePicker.pick} onClose={referencePicker.close} />}
             {isFocused && slashMenu && <SlashMenu menu={slashMenu} listId={slashListId} />}
             {isFocused && editor && status && (
                 <MobileNestingToolbar
